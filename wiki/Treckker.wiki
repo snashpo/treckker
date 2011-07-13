@@ -18,7 +18,7 @@ In the best way this device will inform you on
   * and data storage for many days...
 
 = summary =
-  * Documentation
+  * documentation
 
 Add your content here.  Format your content with:
   * Text in *bold* or _italic_
