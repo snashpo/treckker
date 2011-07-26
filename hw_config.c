@@ -34,7 +34,6 @@ void Set_System(void)
  /* Enable UART1 clock */
   RCC_APB2PeriphClockCmd( RCC_APB2Periph_USART1, ENABLE);
 
-
   /* Enable GPIOA */
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
 
@@ -440,10 +439,10 @@ void GPIO_Configuration(void)
 *   GPIO_Init(USB_DISCONNECT, &GPIO_InitStructure);
 *--------------------------------------------------*/
 
-	 GPIO_PinRemapConfig(GPIO_Remap_USART1,DISABLE);
+  GPIO_PinRemapConfig(GPIO_Remap_USART1,DISABLE);
 
   /* Configure USART1 Rx (PA.10 ) as input floating */  
-	 GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
   GPIO_Init(GPIOA, &GPIO_InitStructure);
   
@@ -523,6 +522,7 @@ void ndelay(uint16_t ns)
 {
   while(ns--);
 }
+
 void udelay(uint16_t us)
 {
   uint32_t st, ex;
@@ -557,7 +557,11 @@ void mdelay(uint16_t ms)
   } /* while(delai--) */
 }
 
-
+/**
+ * @brief  This function allow to switch system clock frequency.
+ * @param  : 0 -> SLOW (8MHz), 1 -> FAST (48MHz)
+ * @retval : None
+ */
 void stepping_switch(bool fast_slow)
 {
   __disable_irq();
@@ -587,11 +591,10 @@ void stepping_switch(bool fast_slow)
     FLASH->ACR &= (uint32_t)((uint32_t)~FLASH_ACR_LATENCY);
     FLASH->ACR |= (uint32_t)FLASH_ACR_LATENCY_2;    
 
-    /* PLLCLK = 8MHz * 9 = 72 MHz */
+    /* PLLCLK = 8MHz * 6 = 48 MHz */
     RCC->CFGR &= (uint32_t)
       ((uint32_t)~(RCC_CFGR_PLLSRC | RCC_CFGR_PLLXTPRE | RCC_CFGR_PLLMULL));
-    RCC->CFGR |= (uint32_t)(RCC_CFGR_PLLSRC | RCC_CFGR_PLLMULL9);
-
+    RCC->CFGR |= (uint32_t)(RCC_CFGR_PLLSRC | RCC_CFGR_PLLMULL6);
     /* Enable PLL */
     RCC->CR |= RCC_CR_PLLON;
 
@@ -605,8 +608,8 @@ void stepping_switch(bool fast_slow)
     /* Wait PLL to be system clock */
     while((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL);
 
-    /* Reconfigure UART1 bit rate */
-    USART1->BRR = 0x0271;
+	 // /* Reconfigure UART1 bit rate : clk = 48MHz*/
+    USART1->BRR = 0x01A1;
 
   } else { /* if (fast_slow) */
     /* Slow */
@@ -617,9 +620,9 @@ void stepping_switch(bool fast_slow)
     FLASH->ACR &= (uint32_t)((uint32_t)~FLASH_ACR_LATENCY);
     FLASH->ACR |= (uint32_t)FLASH_ACR_LATENCY_0;    
 
-	/* PLLCLK = 8MHz * 2 = 16 MHz */
+	/* PLLCLK = 8MHz * 1 = 8 MHz */
     RCC->CFGR &= (uint32_t)
-      ((uint32_t)~(RCC_CFGR_PLLSRC | RCC_CFGR_PLLXTPRE | RCC_CFGR_PLLMULL2));
+      ((uint32_t)~(RCC_CFGR_PLLSRC | RCC_CFGR_PLLXTPRE | RCC_CFGR_PLLMULL));
     RCC->CFGR |= (uint32_t)(RCC_CFGR_PLLSRC | RCC_CFGR_PLLMULL);
 
     /* Turn on PLL */
@@ -632,8 +635,8 @@ void stepping_switch(bool fast_slow)
     /* Wait HSE to be system clock */
     while((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL);
 
-   /* Reconfigure UART1 bit rate */
-    USART1->BRR = 0x008B;
+ 	 /* Reconfigure UART1 bit rate : clk = 8MHz*/
+    USART1->BRR = 0x0045;
 
   } /* if (fast_slow) */
 

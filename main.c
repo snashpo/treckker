@@ -63,11 +63,17 @@ int main(void)
 
 	while (len) {
 
-		LED_TOGGLE();
 		mdelay(1250);
 
 		rtc_print();
 		alarm_Mgmt();
+
+		Button_Mgmt();
+		if( button_state ){
+			LED_ON();
+		}else{
+			LED_OFF();
+		}
 
 		/*--------------------------------------------------
 		* if (expire_timer(0, 30)) {

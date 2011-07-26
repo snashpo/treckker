@@ -460,6 +460,19 @@ void SetDate(enum dateTime_settings_n alarm, uint8_t Day, uint8_t Month, uint16_
 
 }
 
+uint32_t getDate_Fatfs(void){
+
+	uint32_t now = get_sec_counter();
+
+	uint32_t res =  (((uint32_t)s_DateStructVar.Year - 1980) << 25)
+		| ((uint32_t)s_DateStructVar.Month << 21)
+		| ((uint32_t)s_DateStructVar.Day << 16)
+		| (uint16_t)((now % 3600) << 11)
+		| (uint16_t)(((now % 3600) / 60) << 5)
+		| (uint16_t)(((now % 3600) % 60) >> 1);
+
+	return res;
+}
 
 
 void setAlarm(enum alarm_mode_n mode
@@ -486,7 +499,8 @@ void check_alarm(void)
 			if( (s_DateStructVar.Year == s_AlarmDateStructVar.Year) 
 					&& (s_DateStructVar.Month ==  s_AlarmDateStructVar.Month) 
 					&& (s_DateStructVar.Day == s_AlarmDateStructVar.Day)
-					&&	(s_AlarmDateStructVar.time <= get_sec_counter()) ){
+					&&	(s_AlarmDateStructVar.time <= get_sec_counter())
+					&&	(s_AlarmDateStructVar.time >= get_sec_counter() + 300) ){
 				AlarmStatus |= RTC_ALARM_STARTED;
 			}
 			break;

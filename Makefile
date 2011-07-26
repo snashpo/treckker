@@ -40,7 +40,8 @@ COBJECTS = printf.o \
 			system_stm32f10x.o \
 			misc.o \
 			startup_stm32f10x_md.o \
-			eeprom.o	
+			eeprom.o \
+			button.o	
 
 LSOURCES        = $(patsubst %.o,%.c,$(LOBJECTS))
 CSOURCES        = $(patsubst %.o,%.c,$(COBJECTS))

@@ -195,6 +195,8 @@ void inc_sec_counter(void);
 void rtc_print(void);
 void setAlarm(enum alarm_mode_n mode, uint16_t year, uint8_t month, uint8_t day
 		, uint8_t hour, uint8_t min, uint8_t sec);
+uint32_t getDate_Fatfs(void);
 #endif /* __CLOCK_CALENDAR_H */
 
 /******************* (C) COPYRIGHT 2009 STMicroelectronics *****END OF FILE****/
+
