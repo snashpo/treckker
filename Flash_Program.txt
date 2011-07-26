@@ -1,0 +1,9 @@
+/opt/arm-cortex/bin/openocd -f stm32_armusbocd.cfg
+
+halt
+flash probe 0
+flash erase_sector 0 0 125
+flash write_image erase main.bin 0x08000000
+verify_image main.bin 0x08000000
+reset
+
