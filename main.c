@@ -11,6 +11,7 @@
 
 #include "timer.h"
 #include "hw_config.h"
+#include "clock_calendar.h"
 #include "button.h"
 
 #include "version.h"
@@ -22,20 +23,32 @@
 #define DEBUGF(x, args...)
 #endif
 
+// Remote request reset
+static bool request_reset = 0;
+static bool request_sleep = 0;
+
+void reset_request()
+{
+  request_reset = 1;
+}
+
+void sleep_request()
+{
+ request_sleep = 1;
+}
 
 
 int main(void)
 {
-	uint32_t len;
+	uint32_t len = 1;
+	tick_t timer = 0;
 	/*--------------------------------------------------
 	* bool clock_speed = FAST;
 	*--------------------------------------------------*/
 
 	Set_System();
 	
-	/*--------------------------------------------------
-	* rtc_Init();
-	*--------------------------------------------------*/
+	rtc_Init();
 
 	printf("STM32 NROSSERO (C) 2011\n");
 	printf("Boussole Version %d.%d / %s @ %s\n", 
@@ -45,18 +58,35 @@ int main(void)
 			(unsigned int) *(__IO uint32_t*)(0x1FFFF7EC),
 			(unsigned int) *(__IO uint32_t*)(0x1FFFF7F0));
 
-	len = 0;
 
-	while (1) {
-	
-	//	PWR_EnterSTANDBYMode();
-		LED_OFF();
-		mdelay(1000);
-		LED_ON();
-		mdelay(1000);
+	len = TICK_1S * 4;
 
-		len++;
-		printf("%d\n", len);
+	while (len) {
+
+		LED_TOGGLE();
+		mdelay(1250);
+
+		rtc_print();
+		alarm_Mgmt();
+
+		/*--------------------------------------------------
+		* if (expire_timer(0, 30)) {
+		* 	sleep_request();
+		* }
+		*--------------------------------------------------*/
+
+		if (request_sleep == 1) {
+			PWR_WakeUpPinCmd(ENABLE);
+			PWR_EnterSTANDBYMode();
+		}
+
+		if (request_reset == 1){
+			if(timer == 0) {
+				timer = tick_1khz();
+			} else if (expire_timer(timer, len)) {
+				len = 0;
+			} /* if ((request_reset == TRUE) && (expire_timer(timer, len))) */
+		}
 
 	} /* 	while (len != 0) */
 

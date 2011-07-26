@@ -67,16 +67,13 @@ void Set_System(void)
   GPIO_Configuration();
 
   /* Configure RTC */
-//  RTC_Configuration();
+  RTC_Configuration();
 
   /* Configure USART */
   USART_Config();
 
  /* Setup Interrupt table */
   Interrupts_Config();
-
-  /* Configure RTC */
-//  RTC_Configuration();
 
 /*--------------------------------------------------
 *   / * Configure the timer * /
