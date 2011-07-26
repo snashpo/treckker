@@ -7,9 +7,9 @@
 //#define SYSCLK_FREQ_HSE    HSE_Value
 //#define SYSCLK_FREQ_20MHz  20000000
 //#define SYSCLK_FREQ_36MHz  36000000
-//#define SYSCLK_FREQ_48MHz  48000000
+#define SYSCLK_FREQ_48MHz  48000000
 //#define SYSCLK_FREQ_56MHz  56000000
-#define SYSCLK_FREQ_72MHz  72000000
+//#define SYSCLK_FREQ_72MHz  72000000
 
 /*
  * Uncomment the  following line if you need to use external SRAM mounted
