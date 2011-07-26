@@ -28,10 +28,10 @@
 #include "stm32f10x_it.h"
 
 #include "clock_calendar.h"
+#include "timer.h"
 #include "eeprom.h"
 
 
-#define DEBUG
 #ifdef DEBUG
 #define DEBUGF(x, args...) printf(x, ##args)
 #else
@@ -39,16 +39,15 @@
 #endif
 
 /* Private variables--------------------------------------------------------- */
-uint8_t ClockSource;
 uint8_t * MonthsNames[]={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug", "Sep","Oct","Nov","Dec"};
 const uint8_t CalibrationPpm[]={0,1,2,3,4,5,6,7,8,9,10,10,11,12,13,14,15,16,17,
-   18,19,20,21,22,23,24,25,26,27,28,29,30,31,31,32,33,34,
-   35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,51,
-   52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,
-   70,71,72,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,
-   87,88,89,90,91,92,93,93,94,95,96,97,98,99,100,101,102,
-   103,104,105,106,107,108,109,110,111,112,113,113,114,
-   115,116,117,118,119,120,121};
+	18,19,20,21,22,23,24,25,26,27,28,29,30,31,31,32,33,34,
+	35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,51,
+	52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,
+	70,71,72,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,
+	87,88,89,90,91,92,93,93,94,95,96,97,98,99,100,101,102,
+	103,104,105,106,107,108,109,110,111,112,113,113,114,
+	115,116,117,118,119,120,121};
 /*Structure variable declaration for system time, system date,
   alarm time, alarm date */
 
@@ -56,7 +55,7 @@ struct Date_s s_DateStructVar;
 struct Date_s s_AlarmDateStructVar;
 
 static volatile uint32_t sec_counter = 0;
-static uint32_t AlarmStatus = RTC_ALARM_DISABLE;
+static enum alarm_state_n AlarmStatus = RTC_ALARM_WAITING;
 uint16_t SummerTimeCorrect;
 /** @addtogroup RTC
  * @{
@@ -66,16 +65,20 @@ uint16_t SummerTimeCorrect;
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
+
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
 uint32_t get_sec_counter(void){
-   return sec_counter;
+	return sec_counter;
 }
 
 void set_sec_counter(uint32_t now){
-   sec_counter = now;
+	sec_counter = now;
+}
+
+void inc_sec_counter(void){
+	sec_counter++;
 }
 
 /**
@@ -86,94 +89,109 @@ void set_sec_counter(uint32_t now){
  */
 void RTC_Configuration()
 {
-   uint16_t WaitForOscSource;
+	uint16_t WaitForOscSource;
 
-   /*Allow access to Backup Registers*/
-   PWR_BackupAccessCmd(ENABLE);
-
-//   if(BKP_ReadBackupRegister(BKP_DR1) != CONFIGURATION_DONE)
-   {
-      /*Enables the clock to Backup and power interface peripherals    */
-      RCC_APB1PeriphClockCmd(RCC_APB1Periph_BKP | RCC_APB1Periph_PWR, ENABLE);
-
-      /* Backup Domain Reset */
-      BKP_DeInit();
-
-      SetDate(RTC_MODE_SETTINGS_CURRENT, DEFAULT_DAY, DEFAULT_MONTH, DEFAULT_YEAR);	 
-	  
-      /* Set default system time to 09 : 24 : 00 */
-      SetTime(RTC_MODE_SETTINGS_CURRENT, DEFAULT_HOURS,DEFAULT_MINUTES,DEFAULT_SECONDS);
-
-      DEBUGF("Set default settings...\n");
-
-      //EE_Format();
-
-      /*Enable 32.768 kHz external oscillator */
-      RCC_LSEConfig(RCC_LSE_ON);
-      for(WaitForOscSource = 0; WaitForOscSource < 5000; WaitForOscSource++);   
-      RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);
-
-      /* RTC Enabled */
-      RCC_RTCCLKCmd(ENABLE);
-      RTC_WaitForLastTask();
-
-      /*Wait for RTC registers synchronisation */
-      RTC_WaitForSynchro();
-      RTC_WaitForLastTask();
-
-      /* Setting RTC Interrupts-Seconds interrupt enabled */
-      /* Enable the RTC Second */
-      RTC_ITConfig(RTC_IT_ALR , ENABLE);
-      RTC_WaitForLastTask();
-
-      /* Set RTC prescaler: set RTC period to 1 sec */
-      RTC_SetPrescaler(32765); /* RTC period = RTCCLK/RTC_PR = (32.768 KHz)/(32767+1) */
-      /* Prescaler is set to 32766 instead of 32768 to compensate for
-	 lower as well as higher frequencies*/
-      RTC_WaitForLastTask();
-
-      /* Set RTC counter: set RTC period to 1 sec * 60 = 1 min */
-      RTC_SetCounter(0); 
-      RTC_WaitForLastTask();
-
-      /* Set RTC alarm: set RTC period to 1 sec * 60 * 1 = 1 min */
-      RTC_SetAlarm(RTC_ALARM_SET_VALUE); 
-      RTC_WaitForLastTask();
-
-      /*--------------------------------------------------
-       * TODO debug behaviuor!!
-       * BKP_WriteBackupRegister(BKP_DR1, CONFIGURATION_DONE);
-       *--------------------------------------------------*/
-   }
-
-/*   else
-   {
-      / * PWR and BKP clocks selection * /
-      RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
-      for(WaitForOscSource=0;WaitForOscSource<5000;WaitForOscSource++);
-      RTC_WaitForLastTask();
-
-      / * Enable the RTC Alarm * /
-      RTC_ITConfig(RTC_IT_ALR, ENABLE);
-      RTC_WaitForLastTask();
-   }
-*/
-
-   /* Check if how many days are elapsed in power down/Low Power Mode-
-      Updates Date that many Times*/
-   CheckForDaysElapsed();
-   ClockSource = BKP_ReadBackupRegister(BKP_DR6);
-   s_DateStructVar.Month = BKP_ReadBackupRegister(BKP_DR2);
-   s_DateStructVar.Day = BKP_ReadBackupRegister(BKP_DR3);
-   s_DateStructVar.Year = BKP_ReadBackupRegister(BKP_DR4);
-   SummerTimeCorrect = BKP_ReadBackupRegister(BKP_DR7);
-   s_AlarmDateStructVar.Month = BKP_ReadBackupRegister(BKP_DR8);
-   s_AlarmDateStructVar.Day = BKP_ReadBackupRegister(BKP_DR9);
-   s_AlarmDateStructVar.Year = BKP_ReadBackupRegister(BKP_DR10);
-   s_AlarmDateStructVar.time = (((uint32_t)BKP_ReadBackupRegister(BKP_DR11)) << 16) 
-      | BKP_ReadBackupRegister(BKP_DR12)  ;
+	/*Allow access to Backup Registers*/
+	PWR_BackupAccessCmd(ENABLE);
 
 	BKP_RTCOutputConfig(BKP_RTCOutputSource_None);
+
+	if(READ_BKP_CONFIGURATION() != CONFIGURATION_DONE)
+	{
+		/*Enables the clock to Backup and power interface peripherals    */
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_BKP | RCC_APB1Periph_PWR, ENABLE);
+
+		/* Backup Domain Reset */
+		BKP_DeInit();
+
+		SetDate(RTC_MODE_SETTINGS_CURRENT, DEFAULT_DAY, DEFAULT_MONTH, DEFAULT_YEAR);	 
+
+		/* Set default system time to 09 : 24 : 00 */
+		SetTime(RTC_MODE_SETTINGS_CURRENT, DEFAULT_HOURS,DEFAULT_MINUTES,DEFAULT_SECONDS);
+
+		//EE_Format();
+
+		/*Enable 32.768 kHz external oscillator */
+		RCC_LSEConfig(RCC_LSE_ON);
+		for(WaitForOscSource = 0; WaitForOscSource < 5000; WaitForOscSource++);   
+
+		RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);
+
+		/* RTC Enabled */
+		RCC_RTCCLKCmd(ENABLE);
+		RTC_WaitForLastTask();
+
+		/*Wait for RTC registers synchronisation */
+		RTC_WaitForSynchro();
+		RTC_WaitForLastTask();
+
+		/* Setting RTC Interrupts-Seconds interrupt enabled */
+		/* Enable the RTC Second */
+		RTC_ITConfig(RTC_IT_SEC , ENABLE);
+		RTC_WaitForLastTask();
+
+		/* Set RTC prescaler: set RTC period to 1 sec */
+		RTC_SetPrescaler(32765); /* RTC period = RTCCLK/RTC_PR = (32.768 KHz)/(32767+1) */
+		/* Prescaler is set to 32766 instead of 32768 to compensate for
+			lower as well as higher frequencies*/
+		RTC_WaitForLastTask();
+
+		WRITE_BKP_CONFIGURATION(CONFIGURATION_DONE);
+	}
+	else
+	{
+		/* PWR and BKP clocks selection */
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
+		for(WaitForOscSource = 0; WaitForOscSource < 5000; WaitForOscSource++);
+		RTC_WaitForLastTask();
+
+		/* Enable the RTC Alarm */
+		RTC_ITConfig(RTC_IT_SEC, ENABLE);
+		RTC_WaitForLastTask();
+	}
+
+	/* Check if how many days are elapsed in power down/Low Power Mode-
+		Updates Date that many Times*/
+	CheckForDaysElapsed();
+	
+	SummerTimeCorrect = READ_BKP_SUMMERTIME();
+	s_DateStructVar.Month = READ_BKP_CLOCK_MONTH();
+	s_DateStructVar.Day = READ_BKP_CLOCK_DAY();
+	s_DateStructVar.Year = READ_BKP_CLOCK_YEAR();
+	set_sec_counter( READ_BKP_CLOCK_TIME() );
+	
+	s_AlarmDateStructVar.Month = READ_BKP_ALARM_MONTH();
+	s_AlarmDateStructVar.Day = READ_BKP_ALARM_DAY();
+	s_AlarmDateStructVar.Year = READ_BKP_ALARM_YEAR();
+	s_AlarmDateStructVar.time = READ_BKP_ALARM_TIME();
+	s_AlarmDateStructVar.mode = READ_BKP_ALARM_MODE();
+
+}
+
+/**
+ * @brief  Checks whether the passed year is Leap or not.
+ * @param  None
+ * @retval : 1: leap year
+ *   0: not leap year
+ */
+static uint8_t CheckLeap(uint16_t Year)
+{
+	if((Year % 400) == 0)
+	{
+		return LEAP;
+	}
+	else if((Year % 100) == 0)
+	{
+		return NOT_LEAP;
+	}
+	else if((Year % 4) == 0)
+	{
+		return LEAP;
+	}
+	else
+	{
+		return NOT_LEAP;
+	}
 }
 
 
@@ -185,170 +203,180 @@ void RTC_Configuration()
  */
 void SummerTimeCorrection(void)
 {
-   uint8_t CorrectionPending=0;
-   uint8_t CheckCorrect=0;
+	uint8_t CorrectionPending = 0;
+	uint8_t CheckCorrect = 0;
 
-   if((SummerTimeCorrect & OCTOBER_FLAG_SET)!=0)
-   {
-      if((s_DateStructVar.Month==10) && (s_DateStructVar.Day >24 ))
-      {
-	 for(CheckCorrect = 25;CheckCorrect <=s_DateStructVar.Day;CheckCorrect++)
-	 {
-	    if(WeekDay(s_DateStructVar.Year,s_DateStructVar.Month,CheckCorrect )==0)
-	    {
-	       if(CheckCorrect == s_DateStructVar.Day)
-	       {
-		  /* Check if Time is greater than equal to 1:59:59 */
-		  if(get_sec_counter() >= 7199)
-		  {
-		     CorrectionPending=1;
-		  }
-	       }
-	       else
-	       {
-		  CorrectionPending=1;
-	       }
-	       break;
-	    }
-	 }
-      }
-      else if((s_DateStructVar.Month > 10))
-      {
-	 CorrectionPending=1;
-      }
-      else if(s_DateStructVar.Month < 3)
-      {
-	 CorrectionPending=1;
-      }
-      else if(s_DateStructVar.Month == 3)
-      {
-	 if(s_DateStructVar.Day < 24)
-	 {
-	    CorrectionPending=1;
-	 }
-	 else
-	 {
-	    for(CheckCorrect=24;CheckCorrect<=s_DateStructVar.Day;CheckCorrect++)
-	    {
-	       if(WeekDay(s_DateStructVar.Year,s_DateStructVar.Month,CheckCorrect)==0)
-	       {
-		  if(CheckCorrect == s_DateStructVar.Day)
-		  {
-		     /*Check if Time is less than 1:59:59 and year is not the same in which
-		       March correction was done */
-		     if((get_sec_counter() < 7199) && ((SummerTimeCorrect & 0x3FFF) != 
-			      s_DateStructVar.Year))
-		     {
+	if((SummerTimeCorrect & OCTOBER_FLAG_SET) != 0)
+	{
+		if((s_DateStructVar.Month==10) && (s_DateStructVar.Day >24 ))
+		{
+			for(CheckCorrect = 25; CheckCorrect <=s_DateStructVar.Day; CheckCorrect++)
+			{
+				if(WeekDay(s_DateStructVar.Year, s_DateStructVar.Month, CheckCorrect )==0)
+				{
+					if(CheckCorrect == s_DateStructVar.Day)
+					{
+						/* Check if Time is greater than equal to 1:59:59 */
+						if(get_sec_counter() >= 7199)
+						{
+							CorrectionPending = 1;
+						}
+					}
+					else
+					{
+						CorrectionPending = 1;
+					}
+					break;
+				}
+			}
+		}
+		else if((s_DateStructVar.Month > 10))
+		{
+			CorrectionPending = 1;
+		}
+		else if(s_DateStructVar.Month < 3)
+		{
+			CorrectionPending = 1;
+		}
+		else if(s_DateStructVar.Month == 3)
+		{
+			if(s_DateStructVar.Day < 24)
+			{
+				CorrectionPending = 1;
+			}
+			else
+			{
+				for(CheckCorrect = 24; CheckCorrect <= s_DateStructVar.Day;CheckCorrect++)
+				{
+					if(WeekDay(s_DateStructVar.Year, s_DateStructVar.Month, CheckCorrect) == 0)
+					{
+						if(CheckCorrect == s_DateStructVar.Day)
+						{
+							/*Check if Time is less than 1:59:59 and year is not the same in which
+							  March correction was done */
+							if((get_sec_counter() < 7199) && ((SummerTimeCorrect & 0x3FFF) != 
+										s_DateStructVar.Year))
+							{
+								CorrectionPending = 1;
+							}
+							else
+							{
+								CorrectionPending = 0;
+							}
+							break;
+						}
+						else
+						{
+							CorrectionPending = 1;
+						}
+					}
+				}
+			}
+		}
+	}
+	else if((SummerTimeCorrect & MARCH_FLAG_SET) != 0)
+	{
+		if((s_DateStructVar.Month == 3) && (s_DateStructVar.Day > 24 ))
+		{
+			for(CheckCorrect = 25; CheckCorrect <= s_DateStructVar.Day;
+					CheckCorrect++)
+			{
+				if(WeekDay(s_DateStructVar.Year, s_DateStructVar.Month,
+							CheckCorrect ) == 0)
+				{
+					if(CheckCorrect == s_DateStructVar.Day)
+					{
+						/*Check if time is greater than equal to 1:59:59 */
+						if(get_sec_counter() >= 7199)
+						{
+							CorrectionPending = 1;
+						}
+					}
+					else
+					{
+						CorrectionPending = 1;
+					}
+					break;
+				}
+			}
+		}
+		else if((s_DateStructVar.Month > 3) && (s_DateStructVar.Month < 10 ))
+		{
 			CorrectionPending=1;
-		     }
-		     else
-		     {
-			CorrectionPending=0;
-		     }
-		     break;
-		  }
-		  else
-		  {
-		     CorrectionPending=1;
-		  }
-	       }
-	    }
-	 }
-      }
-   }
-   else if((SummerTimeCorrect & MARCH_FLAG_SET)!=0)
-   {
-      if((s_DateStructVar.Month == 3) && (s_DateStructVar.Day >24 ))
-      {
-	 for(CheckCorrect = 25;CheckCorrect <=s_DateStructVar.Day;
-	       CheckCorrect++)
-	 {
-	    if(WeekDay(s_DateStructVar.Year,s_DateStructVar.Month,
-		     CheckCorrect )==0)
-	    {
-	       if(CheckCorrect == s_DateStructVar.Day)
-	       {
-		  /*Check if time is greater than equal to 1:59:59 */
-		  if(get_sec_counter() >= 7199)
-		  {
-		     CorrectionPending=1;
-		  }
-	       }
-	       else
-	       {
-		  CorrectionPending=1;
-	       }
-	       break;
-	    }
-	 }
-      }
-      else if((s_DateStructVar.Month > 3) && (s_DateStructVar.Month < 10 ))
-      {
-	 CorrectionPending=1;
-      }
-      else if(s_DateStructVar.Month ==10)
-      {
-	 if(s_DateStructVar.Day<24)
-	 {
-	    CorrectionPending=1;
-	 }
-	 else
-	 {
-	    for(CheckCorrect=24;CheckCorrect<=s_DateStructVar.Day;
-		  CheckCorrect++)
-	    {
-	       if(WeekDay(s_DateStructVar.Year,s_DateStructVar.Month,
-			CheckCorrect)==0)
-	       {
-		  if(CheckCorrect == s_DateStructVar.Day)
-		  {
-		     /*Check if Time is less than 1:59:59 and year is not the same in
-		       which March correction was done */
-		     if((get_sec_counter() < 7199) && 
-			   ((SummerTimeCorrect & 0x3FFF) != s_DateStructVar.Year))
-		     {
-			CorrectionPending=1;
-		     }
-		     else
-		     {
-			CorrectionPending=0;
-		     }
-		     break;
-		  }
-	       }
-	    }
-	 }
-      }
-   }
+		}
+		else if(s_DateStructVar.Month == 10)
+		{
+			if(s_DateStructVar.Day < 24)
+			{
+				CorrectionPending = 1;
+			}
+			else
+			{
+				for(CheckCorrect=24; CheckCorrect <= s_DateStructVar.Day;
+						CheckCorrect++)
+				{
+					if(WeekDay(s_DateStructVar.Year, s_DateStructVar.Month,
+								CheckCorrect) == 0)
+					{
+						if(CheckCorrect == s_DateStructVar.Day)
+						{
+							/*Check if Time is less than 1:59:59 and year is not the same in
+							  which March correction was done */
+							if((get_sec_counter() < 7199) && 
+									((SummerTimeCorrect & 0x3FFF) != s_DateStructVar.Year))
+							{
+								CorrectionPending = 1;
+							}
+							else
+							{
+								CorrectionPending = 0;
+							}
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
 
-   if(CorrectionPending==1)
-   {
-      if((SummerTimeCorrect & OCTOBER_FLAG_SET)!=0)
-      {
-	 /* Subtract 1 hour from the current time */
-	 set_sec_counter( get_sec_counter() - 3599);
-	 /* Reset October correction flag */
-	 SummerTimeCorrect &= 0xBFFF;
-	 /* Set March correction flag  */
-	 SummerTimeCorrect |= MARCH_FLAG_SET;
-	 SummerTimeCorrect |= s_DateStructVar.Year;
-	 BKP_WriteBackupRegister(BKP_DR7,SummerTimeCorrect);
-      }
-      else if((SummerTimeCorrect & MARCH_FLAG_SET)!=0)
-      {
-	 /* Add 1 hour to current time */
-	 set_sec_counter( get_sec_counter() + 3601);
-	 /* Reset March correction flag */
-	 SummerTimeCorrect &= 0x7FFF;
-	 /* Set October correction flag  */
-	 SummerTimeCorrect |= OCTOBER_FLAG_SET;
-	 SummerTimeCorrect |= s_DateStructVar.Year;
-	 BKP_WriteBackupRegister(BKP_DR7,SummerTimeCorrect);
-      }
-   }
+	if(CorrectionPending == 1)
+	{
+		if((SummerTimeCorrect & OCTOBER_FLAG_SET) != 0)
+		{
+			/* Subtract 1 hour from the current time */
+			set_sec_counter( get_sec_counter() - 3599);
+			/* Reset October correction flag */
+			SummerTimeCorrect &= 0xBFFF;
+			/* Set March correction flag  */
+			SummerTimeCorrect |= MARCH_FLAG_SET;
+			SummerTimeCorrect |= s_DateStructVar.Year;
+			WRITE_BKP_SUMMERTIME( SummerTimeCorrect );
+		}
+		else if((SummerTimeCorrect & MARCH_FLAG_SET)!=0)
+		{
+			/* Add 1 hour to current time */
+			set_sec_counter( get_sec_counter() + 3601);
+			/* Reset March correction flag */
+			SummerTimeCorrect &= 0x7FFF;
+			/* Set October correction flag  */
+			SummerTimeCorrect |= OCTOBER_FLAG_SET;
+			SummerTimeCorrect |= s_DateStructVar.Year;
+			WRITE_BKP_SUMMERTIME( SummerTimeCorrect );
+		}
+	}
 }
 
 
+void rtc_print(void)
+{
+
+	DEBUGF("Date %04d/%02d/%02d time %02d:%02d:%02d\n", READ_BKP_CLOCK_YEAR()
+			, READ_BKP_CLOCK_MONTH()
+			, READ_BKP_CLOCK_DAY()
+			, get_sec_counter() / 3600
+			, (get_sec_counter() % 3600) / 60
+			, (get_sec_counter() % 3600) % 60);
+}
 
 /**
  * @brief  Apllication Initialisation Routine
@@ -357,30 +385,9 @@ void SummerTimeCorrection(void)
  */
 void rtc_Init(void)
 {
-   /*--------------------------------------------------
-    *   / * System Clocks Configuration * /
-    *   RCC_Configuration();
-    *   / *Enables the clock to Backup and power interface peripherals    * /
-    *   RCC_APB1PeriphClockCmd(RCC_APB1Periph_BKP | RCC_APB1Periph_PWR,ENABLE);
-    *   
-    *   / * SysTick Configuration* /
-    *   SysTickConfig();
-    *--------------------------------------------------*/
+	AlarmStatus = RTC_ALARM_WAITING;
 
-   /* Unlock the Flash Program Erase controller */
-   //FLASH_Unlock();
-   /*RTC_NVIC Configuration */
-   //RTC_NVIC_Configuration();
-
-   /* RTC Configuration*/
-   //RTC_Configuration();
-   // BKP_RTCOutputConfig(BKP_RTCOutputSource_None);
-
-   /*--------------------------------------------------
-    *   / * General Purpose I/O Configuration * /
-    *   GPIO_Configuration();
-    *--------------------------------------------------*/
-   AlarmStatus = RTC_ALARM_DISABLE;
+	setAlarm(ALARM_MODE_ONCE, 2011, 7, 20, 19, 29, 0);
 
 }
 
@@ -389,25 +396,28 @@ void rtc_Init(void)
  * @param Hour, Minute and Seconds data
  * @retval : None
  */
-void SetTime(enum dateTime_settings_n alarm, uint8_t Hour,uint8_t Minute,uint8_t Seconds)
+void SetTime(enum dateTime_settings_n alarm, uint8_t Hour
+		,uint8_t Minute
+		,uint8_t Seconds)
 {
-   uint32_t CounterValue;
+	uint32_t CounterValue;
 
-   if ((Hour > 23) || (Minute > 59) || (Seconds > 56)){
-      DEBUGF("INCORRECT TIME...\n");
+	if ((Hour > 23) || (Minute > 59) || (Seconds > 59)){
+		DEBUGF("INCORRECT TIME...\n");
 
-   }else {
+	}else {
 
-      CounterValue = ((Hour * 3600) + (Minute * 60) + Seconds);
+		CounterValue = ((Hour * 60) + Minute) * 60 + Seconds;
 
-      if(! alarm){
-	 set_sec_counter(CounterValue);
+		if(! alarm){
+			set_sec_counter(CounterValue);
+			WRITE_BKP_CLOCK_TIME(CounterValue);
 
-      }else {
-	 BKP_WriteBackupRegister(BKP_DR11,((uint16_t)((CounterValue & 0xFFFF0000) >> 16)));
-	 BKP_WriteBackupRegister(BKP_DR12,(uint16_t)((CounterValue & 0x0000FFFF)));
-      }
-   }
+		}else {
+			WRITE_BKP_ALARM_TIME(CounterValue);
+			s_AlarmDateStructVar.time = CounterValue;
+		}
+	}
 }
 
 /**
@@ -417,38 +427,53 @@ void SetTime(enum dateTime_settings_n alarm, uint8_t Hour,uint8_t Minute,uint8_t
  */
 void SetDate(enum dateTime_settings_n alarm, uint8_t Day, uint8_t Month, uint16_t Year)
 {
-   /*Check if the date entered by the user is correct or not, Displays an error
-     message if date is incorrect  */
-   if((( Month == 4 || Month == 6 || Month == 9 || Month == 11) && Day == 31) 
-	 || (Month == 2 && (Day > 29))
-	 || (Month == 2 && Day == 29 && (CheckLeap(Year)==0)))
-   {
-      DEBUGF("INCORRECT DATE...\n");
+	/*Check if the date entered by the user is correct or not, Displays an error
+	  message if date is incorrect  */
+	if((( Month == 4 || Month == 6 || Month == 9 || Month == 11) && Day == 31) 
+			|| (Month == 2 && (Day > 29))
+			|| (Month == 2 && Day == 29 && (CheckLeap(Year)==0)))
+	{
+		DEBUGF("INCORRECT DATE...\n");
 
-   } else {
-      if(!alarm)
-      {
-	 s_DateStructVar.Year = Year;
-	 s_DateStructVar.Month = Month;
-	 s_DateStructVar.Day = Day;
-	 BKP_WriteBackupRegister(BKP_DR2,Month);
-	 BKP_WriteBackupRegister(BKP_DR3,Day);
-	 BKP_WriteBackupRegister(BKP_DR4,Year);
+	} else {
+		if(!alarm)
+		{
+			s_DateStructVar.Year = Year;
+			s_DateStructVar.Month = Month;
+			s_DateStructVar.Day = Day;
+			WRITE_BKP_CLOCK_MONTH(Month);
+			WRITE_BKP_CLOCK_DAY(Day);
+			WRITE_BKP_CLOCK_YEAR(Year);
+			SummerTimeCorrection();
 
-      } else {
+		} else {
 
-	 s_AlarmDateStructVar.Year = Year;
-	 s_AlarmDateStructVar.Month = Month;
-	 s_AlarmDateStructVar.Day = Day;
-	 BKP_WriteBackupRegister(BKP_DR8,Month);
-	 BKP_WriteBackupRegister(BKP_DR9,Day);
-	 BKP_WriteBackupRegister(BKP_DR10,Year);
+			s_AlarmDateStructVar.Year = Year;
+			s_AlarmDateStructVar.Month = Month;
+			s_AlarmDateStructVar.Day = Day;
+			WRITE_BKP_ALARM_MONTH(Month);
+			WRITE_BKP_ALARM_DAY(Day);
+			WRITE_BKP_ALARM_YEAR(Year);
 
-	 SummerTimeCorrection();
-      }
-   }
+		}
+	}
 
 }
+
+
+
+void setAlarm(enum alarm_mode_n mode
+		, uint16_t year, uint8_t month, uint8_t day
+		, uint8_t hour, uint8_t min, uint8_t sec){
+
+	SetDate(RTC_MODE_SETTINGS_ALARM, day, month, year);
+	SetTime(RTC_MODE_SETTINGS_ALARM, hour, min, sec);
+
+	WRITE_BKP_ALARM_MODE(mode);
+	s_AlarmDateStructVar.mode = mode;
+
+}
+
 /**
  * @brief  This function handles RTCAlarm_IRQHandler .
  * @param  None
@@ -456,17 +481,24 @@ void SetDate(enum dateTime_settings_n alarm, uint8_t Day, uint8_t Month, uint16_
  */
 void check_alarm(void)
 {
-   /* Just compare time */ 
-   if( (BKP_ReadBackupRegister(BKP_DR10) == BKP_ReadBackupRegister(BKP_DR4)) 
-	 && (BKP_ReadBackupRegister(BKP_DR9) == BKP_ReadBackupRegister(BKP_DR3)) 
-	 && (BKP_ReadBackupRegister(BKP_DR8) == BKP_ReadBackupRegister(BKP_DR2))
-	 &&	( ( (((uint32_t)BKP_ReadBackupRegister(BKP_DR11)) << 16) 
-	       | BKP_ReadBackupRegister(BKP_DR12))
-	    == get_sec_counter()) )
-   {
-      AlarmStatus = RTC_ALARM_STARTED;
-   }
+	switch(s_AlarmDateStructVar.mode){
+		case ALARM_MODE_ONCE:
+			if( (s_DateStructVar.Year == s_AlarmDateStructVar.Year) 
+					&& (s_DateStructVar.Month ==  s_AlarmDateStructVar.Month) 
+					&& (s_DateStructVar.Day == s_AlarmDateStructVar.Day)
+					&&	(s_AlarmDateStructVar.time <= get_sec_counter()) ){
+				AlarmStatus |= RTC_ALARM_STARTED;
+			}
+			break;
 
+		/*--------------------------------------------------
+		* case ALARM_MODE_DAYLY:
+		* 	if( s_AlarmDateStructVar.time <= get_sec_counter()){
+		* 		AlarmStatus |= RTC_ALARM_STARTED;
+		* 	}
+		* 	break;
+		*--------------------------------------------------*/
+	} 
 }
 
 
@@ -477,73 +509,62 @@ void check_alarm(void)
  */
 void alarm_Mgmt(void)
 {
-   static uint32_t Dummy;
-	check_alarm();
-   if (AlarmStatus)
-   {
-      switch(AlarmStatus){
+	static uint32_t Dummy;
 
-	 case RTC_ALARM_STARTED:
-	    //DisplayAlarm();
-	    GPIO_SetBits(GPIOC, GPIO_Pin_6);
-	    Dummy = get_sec_counter();
-	    AlarmStatus=RTC_ALARM_PENDING;
-	    break;
+	if ( s_AlarmDateStructVar.mode)
+	{
+		check_alarm();
 
-	 case RTC_ALARM_PENDING:
-	    if((get_sec_counter() - Dummy) == 4)
-	    {
-	       GPIO_ResetBits(GPIOC, GPIO_Pin_6);
-	       //SelIntExtOnOffConfig(ENABLE);
-	       //RightLeftIntExtOnOffConfig(ENABLE);
-	       //UpDownIntOnOffConfig(ENABLE);
-	       //MenuInit();
-	       Dummy=0;
-	       AlarmStatus = RTC_ALARM_WAITING;
-	    }
-	    break;
-	    /*--------------------------------------------------
-	     *   case RTC_ALARM_DISABLE:
-	     *   case RTC_ALARM_WAITING:
-	     *   default:
-	     * 	  break;
-	     *--------------------------------------------------*/
-      }
-   }
+		if( AlarmStatus  == RTC_ALARM_STARTED){
+			Dummy = tick_1khz();
+			AlarmStatus |= RTC_ALARM_PENDING;
+			DEBUGF("Start ALARM Process.\n");
+		}
+		else if( (AlarmStatus & RTC_ALARM_PENDING) ){
+			if( expire_timer( Dummy, 4000) ){
+				DEBUGF("Stop ALARM Process.\n");
+				AlarmStatus = RTC_ALARM_WAITING;
+				if (s_AlarmDateStructVar.mode == ALARM_MODE_ONCE){
+					WRITE_BKP_ALARM_MODE(ALARM_MODE_DISABLE);
+					s_AlarmDateStructVar.mode = ALARM_MODE_DISABLE;
+				}
+			}
+		}
+	}
 }
 
 
 /*--------------------------------------------------
-* / **
-*  * @brief  This function is executed after wakeup from STOP mode
-*  * @param  None
-*  * @retval : None
-*  * /
-* void ReturnFromStopMode(void)
-* {
-*    / * RCC Configuration has to be called after waking from STOP Mode* /
-*    RCC_Configuration();
-*    / *Enables the clock to Backup and power interface peripherals after Wake Up * /
-*    RCC_APB1PeriphClockCmd(RCC_APB1Periph_BKP | RCC_APB1Periph_PWR,ENABLE);
-*    / * Enable access to Backup Domain * /
-*    PWR_BackupAccessCmd(ENABLE);
-*    / * LCD Reinitialisation * /
-*    STM3210B_LCD_Init();
-*    / * LED D2 goes off * /
-*    GPIO_ResetBits(GPIOC, GPIO_Pin_9); 
-*    / * Enable Sel interrupt * /
-*    SelIntExtOnOffConfig(ENABLE);
-*    / * Menu initialisation * /
-*    //MenuInit();
-*    / *--------------------------------------------------
-*     *   / * Time display enable * /
-*     *   TimeDateDisplay=0;
-*     *--------------------------------------------------* /
-*    / * Since Sel is used to exit from STOP mode, hence when STOP mode is exited
-*       initial value of MenuLevelPointer is 0 * /
-*    MenuLevelPointer=0xFF;
-* }
-*--------------------------------------------------*/
+ * / **
+ *  * @brief  This function is executed after wakeup from STOP mode
+ *  * @param  None
+ *  * @retval : None
+ *  * /
+ * void ReturnFromStopMode(void)
+ * {
+ *    / * RCC Configuration has to be called after waking from STOP Mode* /
+ *    RCC_Configuration();
+ *    / *Enables the clock to Backup and power interface peripherals after Wake Up * /
+ *    RCC_APB1PeriphClockCmd(RCC_APB1Periph_BKP | RCC_APB1Periph_PWR,ENABLE);
+ *    / * Enable access to Backup Domain * /
+ *    PWR_BackupAccessCmd(ENABLE);
+ *    / * LCD Reinitialisation * /
+ *    STM3210B_LCD_Init();
+ *    / * LED D2 goes off * /
+ *    GPIO_ResetBits(GPIOC, GPIO_Pin_9); 
+ *    / * Enable Sel interrupt * /
+ *    SelIntExtOnOffConfig(ENABLE);
+ *    / * Menu initialisation * /
+ *    //MenuInit();
+ *    / *--------------------------------------------------
+ *     *   / * Time display enable * /
+ *     *   TimeDateDisplay=0;
+ *     *--------------------------------------------------* /
+ *    / * Since Sel is used to exit from STOP mode, hence when STOP mode is exited
+ *       initial value of MenuLevelPointer is 0 * /
+ *    MenuLevelPointer=0xFF;
+ * }
+ *--------------------------------------------------*/
 
 
 
@@ -554,110 +575,85 @@ void alarm_Mgmt(void)
  */
 void DateUpdate(void)
 {
-   s_DateStructVar.Month=BKP_ReadBackupRegister(BKP_DR2);
-   s_DateStructVar.Year=BKP_ReadBackupRegister(BKP_DR4);
-   s_DateStructVar.Day=BKP_ReadBackupRegister(BKP_DR3);
+	s_DateStructVar.Month = READ_BKP_CLOCK_MONTH();
+	s_DateStructVar.Year = READ_BKP_CLOCK_YEAR();
+	s_DateStructVar.Day = READ_BKP_CLOCK_DAY();
 
-   if(s_DateStructVar.Month == 1 || s_DateStructVar.Month == 3 || 
-	 s_DateStructVar.Month == 5 || s_DateStructVar.Month == 7 ||
-	 s_DateStructVar.Month == 8 || s_DateStructVar.Month == 10 
-	 || s_DateStructVar.Month == 12)
-   {
-      if(s_DateStructVar.Day < 31)
-      {
-	 s_DateStructVar.Day++;
-      }
-      /* Date structure member: s_DateStructVar.Day = 31 */
-      else
-      {
-	 if(s_DateStructVar.Month != 12)
-	 {
-	    s_DateStructVar.Month++;
-	    s_DateStructVar.Day = 1;
-	 }
-	 /* Date structure member: s_DateStructVar.Day = 31 & s_DateStructVar.Month =12 */
-	 else
-	 {
-	    s_DateStructVar.Month = 1;
-	    s_DateStructVar.Day = 1;
-	    s_DateStructVar.Year++;
-	 }
-      }
-   }
-   else if(s_DateStructVar.Month == 4 || s_DateStructVar.Month == 6 
-	 || s_DateStructVar.Month == 9 ||s_DateStructVar.Month == 11)
-   {
-      if(s_DateStructVar.Day < 30)
-      {
-	 s_DateStructVar.Day++;
-      }
-      /* Date structure member: s_DateStructVar.Day = 30 */
-      else
-      {
-	 s_DateStructVar.Month++;
-	 s_DateStructVar.Day = 1;
-      }
-   }
-   else if(s_DateStructVar.Month == 2)
-   {
-      if(s_DateStructVar.Day < 28)
-      {
-	 s_DateStructVar.Day++;
-      }
-      else if(s_DateStructVar.Day == 28)
-      {
-	 /* Leap Year Correction */
-	 if(CheckLeap(s_DateStructVar.Year))
-	 {
-	    s_DateStructVar.Day++;
-	 }
-	 else
-	 {
-	    s_DateStructVar.Month++;
-	    s_DateStructVar.Day = 1;
-	 }
-      }
-      else if(s_DateStructVar.Day == 29)
-      {
-	 s_DateStructVar.Month++;
-	 s_DateStructVar.Day = 1;
-      }
-   }
+	if(s_DateStructVar.Month == 1 || s_DateStructVar.Month == 3 || 
+			s_DateStructVar.Month == 5 || s_DateStructVar.Month == 7 ||
+			s_DateStructVar.Month == 8 || s_DateStructVar.Month == 10 
+			|| s_DateStructVar.Month == 12)
+	{
+		if(s_DateStructVar.Day < 31)
+		{
+			s_DateStructVar.Day++;
+		}
+		/* Date structure member: s_DateStructVar.Day = 31 */
+		else
+		{
+			if(s_DateStructVar.Month != 12)
+			{
+				s_DateStructVar.Month++;
+				s_DateStructVar.Day = 1;
+			}
+			/* Date structure member: s_DateStructVar.Day = 31 & s_DateStructVar.Month =12 */
+			else
+			{
+				s_DateStructVar.Month = 1;
+				s_DateStructVar.Day = 1;
+				s_DateStructVar.Year++;
+			}
+		}
+	}
+	else if(s_DateStructVar.Month == 4 || s_DateStructVar.Month == 6 
+			|| s_DateStructVar.Month == 9 ||s_DateStructVar.Month == 11)
+	{
+		if(s_DateStructVar.Day < 30)
+		{
+			s_DateStructVar.Day++;
+		}
+		/* Date structure member: s_DateStructVar.Day = 30 */
+		else
+		{
+			s_DateStructVar.Month++;
+			s_DateStructVar.Day = 1;
+		}
+	}
+	else if(s_DateStructVar.Month == 2)
+	{
+		if(s_DateStructVar.Day < 28)
+		{
+			s_DateStructVar.Day++;
+		}
+		else if(s_DateStructVar.Day == 28)
+		{
+			/* Leap Year Correction */
+			if(CheckLeap(s_DateStructVar.Year))
+			{
+				s_DateStructVar.Day++;
+			}
+			else
+			{
+				s_DateStructVar.Month++;
+				s_DateStructVar.Day = 1;
+			}
+		}
+		else if(s_DateStructVar.Day == 29)
+		{
+			s_DateStructVar.Month++;
+			s_DateStructVar.Day = 1;
+		}
+	}
 
-   BKP_WriteBackupRegister(BKP_DR2,s_DateStructVar.Month);
-   BKP_WriteBackupRegister(BKP_DR3,s_DateStructVar.Day);
-   BKP_WriteBackupRegister(BKP_DR4,s_DateStructVar.Year);
+	WRITE_BKP_CLOCK_MONTH(s_DateStructVar.Month);
+	WRITE_BKP_CLOCK_DAY(s_DateStructVar.Day);
+	WRITE_BKP_CLOCK_YEAR(s_DateStructVar.Year);
 }
 
 
-
-/**
- * @brief  Checks whether the passed year is Leap or not.
- * @param  None
- * @retval : 1: leap year
- *   0: not leap year
- */
-static uint8_t CheckLeap(uint16_t Year)
-{
-   if((Year % 400) == 0)
-   {
-      return LEAP;
-   }
-   else if((Year % 100) == 0)
-   {
-      return NOT_LEAP;
-   }
-   else if((Year % 4) == 0)
-   {
-      return LEAP;
-   }
-   else
-   {
-      return NOT_LEAP;
-   }
+void TimeUpdate(void){
+	WRITE_BKP_CLOCK_TIME(get_sec_counter());
 }
-
-
 
 /**
  * @brief Determines the weekday
@@ -666,51 +662,51 @@ static uint8_t CheckLeap(uint16_t Year)
  */
 uint16_t WeekDay(uint16_t CurrentYear,uint8_t CurrentMonth,uint8_t CurrentDay)
 {
-   uint16_t Temp1,Temp2,Temp3,Temp4,CurrentWeekDay;
+	uint16_t Temp1,Temp2,Temp3,Temp4,CurrentWeekDay;
 
-   if(CurrentMonth < 3)
-   {
-      CurrentMonth = CurrentMonth + 12;
-      CurrentYear = CurrentYear - 1;
-   }
+	if(CurrentMonth < 3)
+	{
+		CurrentMonth = CurrentMonth + 12;
+		CurrentYear = CurrentYear - 1;
+	}
 
-   Temp1 = (6 * (CurrentMonth + 1)) / 10;
-   Temp2 = CurrentYear / 4;
-   Temp3 = CurrentYear / 100;
-   Temp4 = CurrentYear / 400;
-   CurrentWeekDay = CurrentDay + (2 * CurrentMonth) + Temp1 
-      + CurrentYear + Temp2 - Temp3 + Temp4 + 1;
-   CurrentWeekDay = CurrentWeekDay % 7;
+	Temp1 = (6 * (CurrentMonth + 1)) / 10;
+	Temp2 = CurrentYear / 4;
+	Temp3 = CurrentYear / 100;
+	Temp4 = CurrentYear / 400;
+	CurrentWeekDay = CurrentDay + (2 * CurrentMonth) + Temp1 
+		+ CurrentYear + Temp2 - Temp3 + Temp4 + 1;
+	CurrentWeekDay = CurrentWeekDay % 7;
 
-   return(CurrentWeekDay);
+	return(CurrentWeekDay);
 }
 
 
 
-
-/**
- * @brief Calcuate the Time (in hours, minutes and seconds  derived from
- *   COunter value
- * @param None
- * @retval :None
- */
-void CalculateTime(void)
-{
-   uint32_t TimeVar;
-
-   TimeVar = get_sec_counter();
-   TimeVar %= (SECONDS_IN_DAY + 1);
-   /*--------------------------------------------------
-    *   s_TimeStructVar.HourHigh = (uint8_t)(TimeVar / 3600) / 10;
-    *   s_TimeStructVar.HourLow = (uint8_t)(TimeVar / 3600) % 10;
-    *   s_TimeStructVar.MinHigh = (uint8_t)((TimeVar % 3600) / 60) / 10;
-    *   s_TimeStructVar.MinLow = (uint8_t)((TimeVar % 3600) / 60) % 10;
-    *   s_TimeStructVar.SecHigh = (uint8_t)((TimeVar % 3600) % 60) / 10;
-    *   s_TimeStructVar.SecLow = (uint8_t)((TimeVar % 3600) % 60) % 10;
-    *--------------------------------------------------*/
-}
-
-
+/*--------------------------------------------------
+* 
+* / **
+*  * @brief Calcuate the Time (in hours, minutes and seconds  derived from
+*  *   COunter value
+*  * @param None
+*  * @retval :None
+*  * /
+* void CalculateTime(void)
+* {
+* 	uint32_t TimeVar;
+* 
+* 	TimeVar = get_sec_counter();
+* 	TimeVar %= (SECONDS_IN_DAY + 1);
+* 	    s_TimeStructVar.HourHigh = (uint8_t)(TimeVar / 3600) / 10;
+* 	    s_TimeStructVar.HourLow = (uint8_t)(TimeVar / 3600) % 10;
+* 	    s_TimeStructVar.MinHigh = (uint8_t)((TimeVar % 3600) / 60) / 10;
+* 	    s_TimeStructVar.MinLow = (uint8_t)((TimeVar % 3600) / 60) % 10;
+* 	    s_TimeStructVar.SecHigh = (uint8_t)((TimeVar % 3600) % 60) / 10;
+* 	    s_TimeStructVar.SecLow = (uint8_t)((TimeVar % 3600) % 60) % 10;
+* }
+* 
+* 
+*--------------------------------------------------*/
 
 /**
  * @brief Chaeks is counter value is more than 86399 and the number of
@@ -720,18 +716,18 @@ void CalculateTime(void)
  */
 void CheckForDaysElapsed(void)
 {
-   uint8_t DaysElapsed;
+	uint8_t DaysElapsed;
 
-   if((get_sec_counter() / SECONDS_IN_DAY) != 0)
-   {
-      for(DaysElapsed = 0; DaysElapsed < (get_sec_counter() / SECONDS_IN_DAY)
-	    ;DaysElapsed++)
-      {
-	 DateUpdate();
-      }
+	if((get_sec_counter() / SECONDS_IN_DAY) != 0)
+	{
+		for(DaysElapsed = 0; DaysElapsed < (get_sec_counter() / SECONDS_IN_DAY)
+				;DaysElapsed++)
+		{
+			DateUpdate();
+		}
 
-      set_sec_counter(get_sec_counter() % SECONDS_IN_DAY);
-   }
+		set_sec_counter(get_sec_counter() % SECONDS_IN_DAY);
+	}
 }
 
 
@@ -853,134 +849,134 @@ void CheckForDaysElapsed(void)
 *   }
 *   else
 *   {
-   *     / * Calulate Deviation in ppm  using the formula :
-      *     Deviation in ppm = (Deviation from 511.968/511.968)*1 million* /
-      *     if(f32_Frequency > 511.968)
-      *     {
-	 *       f32_Deviation=((f32_Frequency-511.968)/511.968)*1000000;
-	 *     }
-	 *     else
-	    *     {
-	       *       f32_Deviation=((511.968-f32_Frequency)/511.968)*1000000;
-	       *     }
-	       *      DeviationInteger = (uint16_t)f32_Deviation;
-	       *     
-		  *     if(f32_Deviation >= (DeviationInteger + 0.5))
-		  *     {
-		     *       DeviationInteger = ((uint16_t)f32_Deviation)+1;
-		     *     }
-		     *     
-			*    CountWait=0;
-		     * 
-			*    / * Frequency deviation in ppm should be les than equal to 121 ppm* /
-			*    if(DeviationInteger <= 121)
-			*    {
-			   *      while(CountWait<128)
-			      *      {
-				 *        if(CalibrationPpm[CountWait] == DeviationInteger)
-				    *        break;
-				 *        CountWait++;
-				 *      }
-				 * 
-				    *      BKP_SetRTCCalibrationValue(CountWait);
-				 *      LCD_Clear(Blue2);
-				 *      LCD_DisplayString(Line4,Column1,"Calibration Value");
-				 *      LCD_DisplayChar(Line5,Column10,(CountWait%10)+0x30);
-				 *      CountWait=CountWait/10;
-				 *      LCD_DisplayChar(Line5,Column9,(CountWait%10)+0x30);
-				 *      CountWait=CountWait/10;
-				 *    
-				    *      if(CountWait>0)
-				    *      {
-				       *        LCD_DisplayChar(Line5,Column8,(CountWait%10)+0x30);
-				       *      }
-				       *    }
-				       *    else / * Frequency deviation in ppm is more than 121 ppm, hence calibration
-					  *            can not be done * /
-					  *    {
-					     *      LCD_Clear(Blue2);
-					     *      LCD_DisplayString(Line3,Column1,"Out Of Calibration");
-					     *      LCD_DisplayString(Line4,Column4,"Range");
-					     *    }
-					     *   }
-					     *   
-					     *   BKP_RTCOutputConfig(BKP_RTCOutputSource_None);
-					     *   TIM_ITConfig(TIM2, TIM_IT_CC2, DISABLE);
-					     *   TIM_Cmd(TIM2, DISABLE);
-					     *   TIM_DeInit(TIM2);
-					     *   CalibrationTimer=RTC_GetCounter();
-					     *   
-   *   / *  Wait for 2 seconds  * /
+	*     / * Calulate Deviation in ppm  using the formula :
+		*     Deviation in ppm = (Deviation from 511.968/511.968)*1 million* /
+		*     if(f32_Frequency > 511.968)
+		*     {
+			*       f32_Deviation=((f32_Frequency-511.968)/511.968)*1000000;
+			*     }
+			*     else
+				*     {
+					*       f32_Deviation=((511.968-f32_Frequency)/511.968)*1000000;
+					*     }
+					*      DeviationInteger = (uint16_t)f32_Deviation;
+					*     
+						*     if(f32_Deviation >= (DeviationInteger + 0.5))
+						*     {
+							*       DeviationInteger = ((uint16_t)f32_Deviation)+1;
+							*     }
+							*     
+								*    CountWait=0;
+							* 
+								*    / * Frequency deviation in ppm should be les than equal to 121 ppm* /
+								*    if(DeviationInteger <= 121)
+								*    {
+									*      while(CountWait<128)
+										*      {
+											*        if(CalibrationPpm[CountWait] == DeviationInteger)
+												*        break;
+											*        CountWait++;
+											*      }
+											* 
+												*      BKP_SetRTCCalibrationValue(CountWait);
+											*      LCD_Clear(Blue2);
+											*      LCD_DisplayString(Line4,Column1,"Calibration Value");
+											*      LCD_DisplayChar(Line5,Column10,(CountWait%10)+0x30);
+											*      CountWait=CountWait/10;
+											*      LCD_DisplayChar(Line5,Column9,(CountWait%10)+0x30);
+											*      CountWait=CountWait/10;
+											*    
+												*      if(CountWait>0)
+												*      {
+													*        LCD_DisplayChar(Line5,Column8,(CountWait%10)+0x30);
+													*      }
+													*    }
+													*    else / * Frequency deviation in ppm is more than 121 ppm, hence calibration
+														*            can not be done * /
+														*    {
+															*      LCD_Clear(Blue2);
+															*      LCD_DisplayString(Line3,Column1,"Out Of Calibration");
+															*      LCD_DisplayString(Line4,Column4,"Range");
+															*    }
+															*   }
+															*   
+															*   BKP_RTCOutputConfig(BKP_RTCOutputSource_None);
+															*   TIM_ITConfig(TIM2, TIM_IT_CC2, DISABLE);
+															*   TIM_Cmd(TIM2, DISABLE);
+															*   TIM_DeInit(TIM2);
+															*   CalibrationTimer=RTC_GetCounter();
+															*   
+	*   / *  Wait for 2 seconds  * /
 *   while((RTC_GetCounter() - CalibrationTimer) < 5)
-   *   {
-      *   }
-      * 
-      * }
-      *--------------------------------------------------*/
+	*   {
+		*   }
+		* 
+		* }
+		*--------------------------------------------------*/
 
 
-/*--------------------------------------------------
-* / **
-*  * @brief  Configures RTC Interrupts
-*  * @param  None
-*  * @retval : None
-*  * /
-* void RTC_NVIC_Configuration(void)
-* {
-*    NVIC_InitTypeDef NVIC_InitStructure;
-*    //EXTI_InitTypeDef EXTI_InitStructure;
-* 
-*    EXTI_DeInit();
-* 
-*    / * Configure one bit for preemption priority * /
-*    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
-*    / * Enable the RTC Interrupt * /
-*    NVIC_InitStructure.NVIC_IRQChannel = RTC_IRQn;
-*    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-*    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-*    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-*    NVIC_Init(&NVIC_InitStructure);
-* 
-*    / *--------------------------------------------------
-*     *   / * Enable the EXTI Line17 Interrupt * /
-*     *   EXTI_ClearITPendingBit(EXTI_Line17);
-*     *   EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-*     *   EXTI_InitStructure.EXTI_Line = EXTI_Line17;
-*     *   EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
-*     *   EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-*     *   EXTI_Init(&EXTI_InitStructure);
-*     *--------------------------------------------------* /
-* 
-*    / *--------------------------------------------------
-*     *   EXTI_ClearITPendingBit(EXTI_Line16 );
-*     *   EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-*     *   EXTI_InitStructure.EXTI_Line = EXTI_Line16;
-*     *   EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
-*     *   EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-*     *   EXTI_Init(&EXTI_InitStructure);
-*     *--------------------------------------------------* /
-* 
-*    / *--------------------------------------------------
-*     *   NVIC_InitStructure.NVIC_IRQChannel = PVD_IRQn;
-*     *   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-*     *   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-*     *   NVIC_Init(&NVIC_InitStructure);
-*     *--------------------------------------------------* /
-* 
-*    / *--------------------------------------------------
-*     *   / * Enable the TIM2 global Interrupt * /
-*     *   NVIC_InitStructure.NVIC_IRQChannel = TIM2_IRQn;
-*     *   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-*     *   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
-*     *   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-*     *   NVIC_Init(&NVIC_InitStructure);
-*     *--------------------------------------------------* /
-* }
-*--------------------------------------------------*/
+		/*--------------------------------------------------
+		 * / **
+		 *  * @brief  Configures RTC Interrupts
+		 *  * @param  None
+		 *  * @retval : None
+		 *  * /
+		 * void RTC_NVIC_Configuration(void)
+		 * {
+		 *    NVIC_InitTypeDef NVIC_InitStructure;
+		 *    //EXTI_InitTypeDef EXTI_InitStructure;
+		 * 
+		 *    EXTI_DeInit();
+		 * 
+		 *    / * Configure one bit for preemption priority * /
+		 *    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+		 *    / * Enable the RTC Interrupt * /
+		 *    NVIC_InitStructure.NVIC_IRQChannel = RTC_IRQn;
+		 *    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+		 *    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+		 *    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+		 *    NVIC_Init(&NVIC_InitStructure);
+		 * 
+		 *    / *--------------------------------------------------
+		 *     *   / * Enable the EXTI Line17 Interrupt * /
+		 *     *   EXTI_ClearITPendingBit(EXTI_Line17);
+		 *     *   EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+		 *     *   EXTI_InitStructure.EXTI_Line = EXTI_Line17;
+		 *     *   EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+		 *     *   EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+		 *     *   EXTI_Init(&EXTI_InitStructure);
+		 *     *--------------------------------------------------* /
+		 * 
+		 *    / *--------------------------------------------------
+		 *     *   EXTI_ClearITPendingBit(EXTI_Line16 );
+		 *     *   EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+		 *     *   EXTI_InitStructure.EXTI_Line = EXTI_Line16;
+		 *     *   EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+		 *     *   EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+		 *     *   EXTI_Init(&EXTI_InitStructure);
+		 *     *--------------------------------------------------* /
+		 * 
+		 *    / *--------------------------------------------------
+		 *     *   NVIC_InitStructure.NVIC_IRQChannel = PVD_IRQn;
+		 *     *   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+		 *     *   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+		 *     *   NVIC_Init(&NVIC_InitStructure);
+		 *     *--------------------------------------------------* /
+		 * 
+		 *    / *--------------------------------------------------
+		 *     *   / * Enable the TIM2 global Interrupt * /
+		 *     *   NVIC_InitStructure.NVIC_IRQChannel = TIM2_IRQn;
+		 *     *   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+		 *     *   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+		 *     *   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+		 *     *   NVIC_Init(&NVIC_InitStructure);
+		 *     *--------------------------------------------------* /
+		 * }
+		 *--------------------------------------------------*/
 
-/**
- * @}
- */ 
+		/**
+		 * @}
+		 */ 
 
 
-/******************* (C) COPYRIGHT 2009 STMicroelectronics *****END OF FILE****/
+		/******************* (C) COPYRIGHT 2009 STMicroelectronics *****END OF FILE****/

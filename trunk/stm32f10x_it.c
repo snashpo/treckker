@@ -276,74 +276,82 @@ void RTC_IRQHandler(void)
 {
 	uint8_t Month,Day;
 	uint16_t Year;
-	uint32_t sec_counter;
+	static uint32_t sec_counter = 0;
 
-	Month = BKP_ReadBackupRegister(BKP_DR2);
-	Day = BKP_ReadBackupRegister(BKP_DR3);
-	Year = BKP_ReadBackupRegister(BKP_DR4);
+	Month = READ_BKP_CLOCK_MONTH();
+	Day = READ_BKP_CLOCK_DAY();
+	Year = READ_BKP_CLOCK_YEAR();
 	NVIC_ClearPendingIRQ(RTC_IRQn);
-	RTC_ClearITPendingBit(RTC_IT_ALR);
-
-	sec_counter = get_sec_counter() + RTC_PERIOD_VALUE;
-	set_sec_counter(sec_counter);
-
-	RTC_SetCounter(0);
-	RTC_SetAlarm(RTC_ALARM_SET_VALUE);
+	RTC_ClearITPendingBit(RTC_IT_SEC);
 
 	/*--------------------------------------------------
-	* / * If counter is equal to 86399: one day was elapsed * /
-	* / * This takes care of date change and resetting of counter in case of
-	* 	power on - Run mode/ Main supply switched on condition* /
-	* if(sec_counter == 86399)
-	* {
-	* 	/ * Reset counter value * /
-	* 	sec_counter = 0;
-	* 	set_sec_counter(0);
-	* 	/ * Increment the date * /
-	* 	DateUpdate();
-	* }
-	* if( (sec_counter / 3600 == 1) 
-	* 		&& (((sec_counter % 3600) / 60) == 59) 
-	* 		&& (((sec_counter % 3600) % 60) == 59) )
-	* {
-	* 	/ * March Correction * /
-	* 	if((Month == 3) && (Day >24))
-	* 	{
-	* 		if(WeekDay(Year, Month, Day)==0)
-	* 		{
-	* 			if((SummerTimeCorrect & 0x8000) == 0x8000)
-	* 			{
-	* 				sec_counter += 3601;
-	* 				set_sec_counter(sec_counter);
-	* 				/ * Reset March correction flag * /
-	* 				SummerTimeCorrect &= 0x7FFF;
-	* 				/ * Set October correction flag  * /
-	* 				SummerTimeCorrect |= 0x4000;
-	* 				SummerTimeCorrect |= Year;
-	* 				BKP_WriteBackupRegister(BKP_DR7, SummerTimeCorrect);
-	* 			}
-	* 		}
-	* 	}
-	* 	/ * October Correction * /
-	* 	if((Month == 10) && (Day >24))
-	* 	{
-	* 		if(WeekDay(Year, Month, Day) == 0)
-	* 		{
-	* 			if((SummerTimeCorrect & 0x4000) == 0x4000)
-	* 			{
-	* 				sec_counter -= 3599;
-	* 				set_sec_counter(sec_counter);
-	* 				/ * Reset October correction flag * /
-	* 				SummerTimeCorrect &= 0xBFFF;
-	* 				/ * Set March correction flag  * /
-	* 				SummerTimeCorrect |= 0x8000;
-	* 				SummerTimeCorrect |= Year;
-	* 				BKP_WriteBackupRegister(BKP_DR7, SummerTimeCorrect);
-	* 			}
-	* 		}
-	* 	}
-	* }
+	* sec_counter = get_sec_counter() + RTC_PERIOD_VALUE;
+	* set_sec_counter(sec_counter);
 	*--------------------------------------------------*/
+	inc_sec_counter();
+	sec_counter = get_sec_counter();
+	/*--------------------------------------------------
+	* RTC_SetCounter(0);
+	* RTC_SetAlarm(1);
+	*--------------------------------------------------*/
+
+	RTC_SetAlarm(RTC_ALARM_SET_VALUE);
+
+	/* If counter is equal to 86399: one day was elapsed */
+	/* This takes care of date change and resetting of counter in case of
+		power on - Run mode/ Main supply switched on condition*/
+	if(sec_counter == 86399)
+	{
+		/* Reset counter value */
+		sec_counter = 0;
+		set_sec_counter(0);
+		/* Increment the date */
+		DateUpdate();
+	}
+	if( (sec_counter / 3600 == 1) 
+			&& (((sec_counter % 3600) / 60) == 59) 
+			&& (((sec_counter % 3600) % 60) == 59) )
+	{
+		/* March Correction */
+		if((Month == 3) && (Day >24))
+		{
+			if(WeekDay(Year, Month, Day)==0)
+			{
+				if((SummerTimeCorrect & 0x8000) == 0x8000)
+				{
+					sec_counter += 3601;
+					set_sec_counter(sec_counter);
+					/* Reset March correction flag */
+					SummerTimeCorrect &= 0x7FFF;
+					/* Set October correction flag  */
+					SummerTimeCorrect |= 0x4000;
+					SummerTimeCorrect |= Year;
+					WRITE_BKP_SUMMERTIME(SummerTimeCorrect);
+				}
+			}
+		}
+		/* October Correction */
+		if((Month == 10) && (Day >24))
+		{
+			if(WeekDay(Year, Month, Day) == 0)
+			{
+				if((SummerTimeCorrect & 0x4000) == 0x4000)
+				{
+					sec_counter -= 3599;
+					set_sec_counter(sec_counter);
+					/* Reset October correction flag */
+					SummerTimeCorrect &= 0xBFFF;
+					/* Set March correction flag  */
+					SummerTimeCorrect |= 0x8000;
+					SummerTimeCorrect |= Year;
+					WRITE_BKP_SUMMERTIME(SummerTimeCorrect);
+				}
+			}
+		}
+	}
+	if(! (sec_counter % 180)){
+		TimeUpdate();
+	}
 }
 
 
