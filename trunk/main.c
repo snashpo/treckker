@@ -50,6 +50,8 @@ int main(void)
 	
 	rtc_Init();
 
+	SHT1x_Init();
+
 	printf("STM32 NROSSERO (C) 2011\n");
 	printf("Boussole Version %d.%d / %s @ %s\n", 
 			VERSION_MAJOR, VERSION_MINOR, __DATE__, __TIME__);
@@ -69,6 +71,19 @@ int main(void)
 		alarm_Mgmt();
 
 		Button_Mgmt();
+
+		SHT1x_acquire_data();
+/*--------------------------------------------------
+* #ifdef DEW_POINT
+* 		DEBUGF("Temp %d°C, RH %d%, dw %d°C.\n", SHT1x_get_data(0)
+* 				, SHT1x_get_data(1)
+* 				, SHT1x_get_data(2));
+* #else		
+* 		DEBUGF("Temp %d°C, RH %d%.\n", SHT1x_get_data(0)
+* 				, SHT1x_get_data(1) );
+* #endif
+*--------------------------------------------------*/
+
 		if( button_state ){
 			LED_ON();
 		}else{
