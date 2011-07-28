@@ -7,6 +7,7 @@
 #include "fifo.h"
 #include "timer.h"
 #include "button.h"
+#include "sht1x.h"
 
 
 #define USART_FIFO_SIZE   128
@@ -73,6 +74,9 @@ void Set_System(void)
 
  /* Setup Interrupt table */
   Interrupts_Config();
+
+  /* Setup SHT1x	*/
+  SHT1x_Config();
 
 /*--------------------------------------------------
 *   / * Configure the timer * /
@@ -427,7 +431,51 @@ void GPIO_Configuration(void)
 {
   GPIO_InitTypeDef GPIO_InitStructure;
 
-	 GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+ GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+
+  /* Configure USART1 Rx (PA.10 ) as input floating */  
+  GPIO_PinRemapConfig(GPIO_Remap_USART1,DISABLE);
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+  
+  /* Configure USART1 Tx (PA.9 ) as alternate function push-pull */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    /* SHT1x GND */
+  GPIO_InitStructure.GPIO_Pin = SHT1x_GND_PIN;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
+  GPIO_Init(SHT1x_PORT, &GPIO_InitStructure);
+  /* SHT1x DATA */
+  GPIO_InitStructure.GPIO_Pin = SHT1x_DATA_PIN;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+  GPIO_Init(SHT1x_PORT, &GPIO_InitStructure);
+  /* SHT1x CLOCK */
+  GPIO_InitStructure.GPIO_Pin = SHT1x_CLOCK_PIN;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_Init(SHT1x_PORT, &GPIO_InitStructure);
+  /* SHT1x VCC */
+  GPIO_InitStructure.GPIO_Pin = SHT1x_VCC_PIN;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_Init(SHT1x_PORT, &GPIO_InitStructure);
+
+  /* Heartbit Led */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_Init(GPIOC, &GPIO_InitStructure);
+  GPIO_SetBits(GPIOC, LED_PIN);
+  
+   /* Button */
+  GPIO_InitStructure.GPIO_Pin =  BUTTON_PIN;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+  GPIO_Init(BUTTON_PORT, &GPIO_InitStructure);
+
+/*--------------------------------------------------
+*   / * Button int * /
+*   GPIO_EXTILineConfig(BUTTON_PORT, BUTTON_PIN);
+*--------------------------------------------------*/
 
 /*--------------------------------------------------
 *   / * Configure USB pull-up pin * /
@@ -439,32 +487,12 @@ void GPIO_Configuration(void)
 *   GPIO_Init(USB_DISCONNECT, &GPIO_InitStructure);
 *--------------------------------------------------*/
 
-  GPIO_PinRemapConfig(GPIO_Remap_USART1,DISABLE);
-
-  /* Configure USART1 Rx (PA.10 ) as input floating */  
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
-  
-  /* Configure USART1 Tx (PA.9 ) as alternate function push-pull */
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
-
 /*--------------------------------------------------
 *   / * Configure USB power detect pin (PC.4) * /
 *   GPIO_InitStructure.GPIO_Pin = USB_POWER_PIN;
 *   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 *   GPIO_Init(USB_POWER, &GPIO_InitStructure);
 *--------------------------------------------------*/
-
-  /* Heartbit Led */
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
-  GPIO_SetBits(GPIOC, LED_PIN);
-
 
      
 /*--------------------------------------------------
@@ -504,15 +532,6 @@ void GPIO_Configuration(void)
 *   GPIO_Init(CHARGE_DONE_PORT, &GPIO_InitStructure);
 *--------------------------------------------------*/
 
-  /* Button */
-  GPIO_InitStructure.GPIO_Pin =  BUTTON_PIN;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_Init(BUTTON_PORT, &GPIO_InitStructure);
-
-/*--------------------------------------------------
-*   / * Button int * /
-*   GPIO_EXTILineConfig(BUTTON_PORT, BUTTON_PIN);
-*--------------------------------------------------*/
 }
 
 
