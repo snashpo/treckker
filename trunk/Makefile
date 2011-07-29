@@ -7,7 +7,7 @@ AS      = arm-elf-as
 CP      = arm-elf-objcopy
 OD		  = arm-elf-objdump
 
-CFLAGS  =  -I./ -I./include -c -fno-common  -fomit-frame-pointer -g -DDEBUG#-Os 
+CFLAGS  =  -lm -I./ -I./include -c -fno-common  -fomit-frame-pointer -g -DDEBUG#-Os 
 CFLAGS  += -mcpu=cortex-m3 -mthumb -mthumb-interwork
 CFLAGS  += -DUSE_STDPERIPH_DRIVER -DPRINTF_BUFFER_SIZE=128 -Wunused
 AFLAGS  = -ahls -mapcs-32 -o crt.o
