@@ -223,6 +223,11 @@ void USART1_IRQHandler(void)
 	USART1_Istr();
 }
 
+void USART2_IRQHandler(void)
+{ 
+	USART2_Istr();
+}
+
 /**
  * @brief  This function handles RTC_IRQHandler .
  * @param  None
