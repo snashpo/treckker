@@ -30,6 +30,7 @@ LOBJECTS =  core_cm3.o \
 			stm32f10x_flash.o \
 			stm32f10x_wwdg.o \
 			stm32f10x_rtc.o \
+			stm32f10x_i2c.o \
 			stm32f10x_it.o
 
 COBJECTS = printf.o \
@@ -42,7 +43,14 @@ COBJECTS = printf.o \
 			startup_stm32f10x_md.o \
 			eeprom.o \
 			button.o	\
+			buzzer.o \
+			lcd.o \
+			crc.o \
+			battery.o \
+			LSM303.o \
+			vector.o \
 			sht1x.o
+			
 
 LSOURCES        = $(patsubst %.o,%.c,$(LOBJECTS))
 CSOURCES        = $(patsubst %.o,%.c,$(COBJECTS))

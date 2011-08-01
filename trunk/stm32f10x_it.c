@@ -202,21 +202,6 @@ void DMA1_Channel1_IRQHandler(void)
 }
 
 /*--------------------------------------------------
-* void SPI2_IRQHandler(void)
-* {
-* 	if (SPI_I2S_GetITStatus(SPI2, SPI_I2S_IT_RXNE)) {
-* 		/ * Store SPI2 received data * /
-* 		cc1020_get_spi_char(SPI_I2S_ReceiveData(SPI2));
-* 	} / * if (SPI_GetITStatus(SPI2, SPI_IT_RXNE)) * /
-* 
-* 	if (SPI_I2S_GetITStatus(SPI2, SPI_I2S_IT_TXE)) {
-* 		/ * Send SPI2 data * /
-* 		SPI_I2S_SendData(SPI2, cc1020_get_next_char_to_send(NULL));
-* 	} / * if (SPI_GetITStatus(SPI2, SPI_IT_TXE)) * /
-* }
-*--------------------------------------------------*/
-
-/*--------------------------------------------------
 * void SPI1_IRQHandler(void)
 * {
 * 
@@ -238,35 +223,6 @@ void USART1_IRQHandler(void)
 	USART1_Istr();
 }
 
-/*--------------------------------------------------
-* void TIM1_UP_IRQHandler(void)
-* {
-* 	uint8_t b;
-* 	uint32_t u;
-* 	static uint8_t v;
-* 
-* 	TIM1_UP_num++;
-* 
-* 	TIM_ClearFlag(TIM1, TIM_FLAG_Update);
-* 
-* 	b = GPIO_ReadInputDataBit(DIO_PORT, DIO_PIN);
-* 
-* 	if (b != v) {
-* 
-* 		v = b;
-* 
-* 		u =  (sys_clock_freq_stepping / 1000) - SysTick->VAL;
-* 
-* 		if (b != 0) {
-* 			u |= 0x80000000;
-* 		} / * if (b != 0) * /
-* 
-* 		cc1020_recv_data_ook(u);
-* 
-* 	} / * if (b != v) * /
-* 
-* }
-*--------------------------------------------------*/
 /**
  * @brief  This function handles RTC_IRQHandler .
  * @param  None
