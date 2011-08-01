@@ -70,7 +70,7 @@ all: stm32_rtc
 
 
 clean:
-	-rm -f *~ main.dist main.list main.dist main.out main.hex main.map main.bin makefile.dep *.o .*.sw*
+	-rm -f *~ main.dist main.list main.dis main.out main.hex main.map main.bin makefile.dep *.o .*.sw*
 
 #--------------------------------------------------
 # stm32.a: $(LOBJECTS)
