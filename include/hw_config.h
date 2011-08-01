@@ -27,7 +27,18 @@
 #define BUTTON_PORT            GPIOA
 #define BUTTON_PIN             GPIO_Pin_0
 
+#define ADC_VBAT              0
+#define ADC_TEMP_VALUE        1
+#define ADC_REF_VALUE         2
 
+#define ADC_DMA_SIZE          3
+
+#define ADC_NUM_CHANNELS                    ADC_DMA_SIZE
+#define ADC_AIN_VBAT                        ADC_Channel_10
+#define ADC_AIN_TEMP_VALUE                  ADC_Channel_16
+#define ADC_AIN_REF_VALUE                   ADC_Channel_17
+#define PSU_VOLTAGE           5000
+#define PSU_NO_VOLTAGE           0
 enum clock_speed_n{
 	SLOW = 0, 
 	FAST, 
@@ -44,8 +55,11 @@ void USART1_Istr(void);
 void GPIO_Configuration(void);
 void Get_SerialNum(void);
 void TIM_Configuration(void);
+void ADC_Configuration(void);
+void I2C_Configuration(void);
+void SPI2_Configuration(void);
+
 //--------------------------------------------------
-// void SPI2_Configuration(void);
 // void SPI2_Unconfiguration(void);
 // void EXTI_Configuration(void);
 // void DIO_Configuration(bool in_out);
