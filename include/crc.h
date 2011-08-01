@@ -5,8 +5,6 @@
 #define OFFSET_COMMAND          1
 #define OFFSET_DATA             2
 
-#define HEADER_SIZE             2
-
 #define CRC_FEED 0xffff
 
 uint16_t crc16_update(uint16_t crc, uint8_t a);
