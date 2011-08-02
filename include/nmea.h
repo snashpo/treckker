@@ -8,8 +8,11 @@
 // };
 //-------------------------------------------------- 
 
-extern struct sim18_data_s mydata;
+extern struct sim18_data_s gps_mydata;
 extern struct sim18_serial_settings_s sim18_port_config;
+extern uint8_t sim18_in_buf[];
+extern uint8_t sim18_out_buf[];
+
 
 /********** NMEA_PSRF103	************/
 enum NMEA_PSRF103_MESSAGE_CTRL{
@@ -38,10 +41,10 @@ struct NMEA_PSRF103{
 };
 
 /********** high level functions	************/
-int nmea_validate_sentence(char * data);
-char * nmea_add_crc(char * data, uint32_t length);
-int nmea_parse_data(char *data);
-int nmea_parse_data(char *data);
+void nmea_init(void);
+int nmea_validate_sentence(uint16_t length);
+uint32_t nmea_add_crc(char * data, uint32_t length);
+int nmea_parse_data(void);
 int nmea_get_frame(char data);
-int nmea_switch_to_sirf(void);
+int nmea_switch_to_sirf(enum sim18_BAUDRATE);
 #endif

@@ -48,7 +48,7 @@ extern int32_t sys_clock_freq_stepping;
 
 
 void Set_System(void);
-void USART_Config(void);
+void USART_Configuration(void);
 void USART_Send_Char(uint8_t data);
 uint8_t USART1_Send_Buffer(uint8_t* data_buffer, uint8_t Nb_bytes);
 uint8_t USART2_Send_Buffer(uint8_t* data_buffer, uint8_t Nb_bytes);
@@ -68,7 +68,7 @@ void SPI2_Configuration(void);
 // void EXTI13_Configuration(FunctionalState State);
 // void EXTI14_Configuration(FunctionalState State);
 //-------------------------------------------------- 
-void Interrupts_Config(void);
+void Interrupts_Configuration(void);
 void mdelay(uint16_t ms);
 void udelay(uint16_t us);
 void ndelay(uint16_t ns);

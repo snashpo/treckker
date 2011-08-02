@@ -458,7 +458,7 @@ void LSM303_Data_Init(void)
 // @param  None
 // @retval None
 //**************************************
-void LSM303_Configure(void)
+void LSM303_Configuration(void)
 {
 	LSM_Acc_ConfigTypeDef  LSM_Acc_InitStructure;
 	LSM_Magn_ConfigTypeDef LSM_Magn_InitStructure;

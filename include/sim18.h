@@ -2,13 +2,19 @@
 #define __GPS_H__
 
 
+#define SIM18_Port_AUX		GPIOA
+#define SIM18_NRESET			GPIO_Pin_4
+
 #define SIM18_Port			GPIOC
-#define SIM18_NRESET			GPIO_Pin_5
+#define SIM18_V_ANT			GPIO_Pin_2
 #define SIM18_ON_OFF			GPIO_Pin_4
-#define SIM18_ANTENA_Port	GPIOA
-#define SIM18_V_ANT			GPIO_Pin_4
+#define SIM18_WAKEUP			GPIO_Pin_3
 
 
+extern uint8_t * nmea_in_buf;
+extern uint8_t * nmea_out_buf;
+extern uint8_t * sirf_in_buf;
+extern uint8_t * sirf_out_buf;
 
 /********** GPS_ALMANAC	************/
 enum GPS_ALMANAC_RESET_MODE{
@@ -92,13 +98,8 @@ struct sim18_serial_settings_s{
 
 /********** Low level functions	************/
 int sim18_init(void);
-int sim18_stop(void);
-int sim18_process_frame(char buffer);
-void sim18_restart(void);
-int osp_add_crc(uint8_t * data, uint32_t length);
-int osp_validate_sentence(uint8_t * data);
-/*--------------------------------------------------
-* int _reload(void);
-*--------------------------------------------------*/
+void sim18_Configuration(void);
+void sim18_read_data(uint8_t read_value);
+void sim18_write_data(uint32_t length);
 #endif
 
