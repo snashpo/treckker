@@ -671,7 +671,7 @@ void LSM303_Acc_Read_Acc(int16_t* out);
 void LSM303_Magn_Config(LSM_Magn_ConfigTypeDef *LSM_Magn_Config_Struct);
 void LSM303_Magn_Read_Magn(int16_t* out);
 
-void LSM303_Configure(void);
+void LSM303_Configuration(void);
 void LSM303_CalVhVa(void);
 void LSM303_CalUhUa(void);
 void LSM303_MakeAllVector(void);

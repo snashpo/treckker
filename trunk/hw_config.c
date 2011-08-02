@@ -47,8 +47,20 @@ void Set_System(void)
 	/*Enables the clock to Backup and power interface peripherals    */
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_BKP | RCC_APB1Periph_PWR, ENABLE);
 
+	/* Enable DMA1 clock */
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+
+	/* Enable ADC1 clock */
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+
+	// Enable GPIO clock 
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+	
 	/* Enable UART1 clock */
 	RCC_APB2PeriphClockCmd( RCC_APB2Periph_USART1, ENABLE);
+
+	// Enable USART2 Clock 
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
 
 	/* Enable GPIOA */
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
@@ -73,10 +85,15 @@ void Set_System(void)
 	RTC_Configuration();
 
 	/* Configure USART */
-	USART_Config();
+	USART_Configuration();
+
+	/*--------------------------------------------------
+	* / * Configure the DMA * /
+	* USART2_DMA_Configuration();
+	*--------------------------------------------------*/
 
 	/* Setup Interrupt table */
-	Interrupts_Config();
+	Interrupts_Configuration();
 
 	/* Setup SHT1x	*/
 	SHT1x_Config();
@@ -90,8 +107,12 @@ void Set_System(void)
 	SPI2_Configuration();
 
 	I2C_Configuration();
+	
+	/*--------------------------------------------------
+	* LSM303_Configuration();
+	*--------------------------------------------------*/
 
-	SIM18_Configuration();
+	sim18_Configuration();
 
 	/* Flash Configuration */
 	FLASH_Unlock();
@@ -131,7 +152,7 @@ void Set_System(void)
  * }
  *--------------------------------------------------*/
 
-void Interrupts_Config(void)
+void Interrupts_Configuration(void)
 {
 	NVIC_InitTypeDef NVIC_InitStructure;
 
@@ -168,6 +189,14 @@ void Interrupts_Config(void)
 	NVIC_Init(&NVIC_InitStructure);
 
 	/*--------------------------------------------------
+	* / * Enable the DMA1 Channel6 Interrupt * /
+	* NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel6_IRQn;
+	* NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+	* NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	* NVIC_Init(&NVIC_InitStructure);
+	*--------------------------------------------------*/
+
+	/*--------------------------------------------------
 	 *   / * Enable the EXTI15_10 Interrupt (clock syncho / get rssi)* /
 	 *   NVIC_InitStructure.NVIC_IRQChannel = EXTI15_10_IRQn;
 	 *   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
@@ -200,7 +229,7 @@ void Interrupts_Config(void)
  * }
  *--------------------------------------------------*/
 
-void USART_Config(void)
+void USART_Configuration(void)
 {
 	/* USART1 default configuration */
 	/* USART1 configured as follow:
@@ -236,8 +265,10 @@ void USART_Config(void)
 	USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
 	/* Configure the USART2 */
 	USART_Init(USART2, &USART_InitStructure);
-
+	FIFO_INIT(uart2_tail, uart2_head);
+	USART_Cmd(USART2, ENABLE);
 }
+
 
 void USART1_Wait_Empty()
 {
@@ -264,6 +295,27 @@ bool USART1_GetFifo(uint8_t *c)
 	FIFO_NEXT(uart1_tail, USART_FIFO_SIZE);
 
 	return TRUE;
+}
+
+uint8_t USART1_Send_Buffer(uint8_t* data_buffer, uint8_t Nb_bytes)
+{
+	uint32_t i;
+
+	for (i = 0; i < Nb_bytes; i++) {
+		if (*(data_buffer + i) == '\n') {
+			/* silently send a carriage return */
+			USART1_Send_Char('\r');
+
+		} else if (*(data_buffer + i) == '\r') {
+			/* silently send a newline */
+			USART1_Send_Char('\n');
+
+		} /* if (*(data_buffer + i) == '\n') */
+
+		USART1_Send_Char(*(data_buffer + i));
+	} /* for (i = 0; i < Nb_bytes; i++) */
+
+	return Nb_bytes;
 }
 
 void USART1_Istr()
@@ -319,29 +371,8 @@ void USART2_Istr()
 	} 
 
 	if (USART_GetITStatus(USART2, USART_IT_RXNE) != RESET) {
-		sim18_process_frame((char)USART_get_RX_char());
+		sim18_read_data((uint8_t)USART1->DR);
 	} 
-}
-
-
-uint8_t USART1_Send_Buffer(uint8_t* data_buffer, uint8_t Nb_bytes)
-{
-	uint32_t i;
-
-	for (i = 0; i < Nb_bytes; i++) {
-		if (*(data_buffer + i) == '\n') {
-			/* silently send a carriage return */
-			USART1_Send_Char('\r');
-		} else { /* if (data[i]== '\n') */
-			if (*(data_buffer + i) == '\r') {
-				/* silently send a newline */
-				USART1_Send_Char('\n');
-			} /* if (*(data_buffer + i) == '\r') */
-		} /* if (*(data_buffer + i) == '\n') */
-		USART1_Send_Char(*(data_buffer + i));
-	} /* for (i = 0; i < Nb_bytes; i++) */
-
-	return Nb_bytes;
 }
 
 uint8_t USART2_Send_Buffer(uint8_t* data_buffer, uint8_t Nb_bytes)
@@ -548,11 +579,15 @@ void GPIO_Configuration(void)
 
 	GPIO_InitStructure.GPIO_Pin =  SIM18_NRESET;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-	GPIO_Init(SIM18_Port, &GPIO_InitStructure);
+	GPIO_Init(SIM18_Port_AUX, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin =  SIM18_V_ANT;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-	GPIO_Init(SIM18_ANTENA_Port, &GPIO_InitStructure);
+	GPIO_Init(SIM18_Port, &GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin =  SIM18_WAKEUP;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_Init(SIM18_Port, &GPIO_InitStructure);
 
 	/*--------------------------------------------------
 	 *   / * Configure USB pull-up pin * /

@@ -1,15 +1,12 @@
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <stdint.h>
 #include <stdio.h>
-#include <sys/stat.h>
 #include <string.h>
-#include <fcntl.h>
+
+#include "stm32f10x.h"
 
 #include "sim18.h"
 #include "nmea.h"
 #include "sirf.h"
+#include "tools.h"
 
 
 
@@ -20,19 +17,44 @@
 #endif
 
 #define NMEA_CRC_FILL 0
+
+
+uint8_t * nmea_in_buf;
+uint8_t * nmea_out_buf;
+
 int convert_str_to_point(char *data, struct coordonate_s * point){
-	//3113.3156
-	float pt =  strtof(data, NULL);
-	point->degree = (uint16_t)(pt / 100);
-	point->minute = (uint16_t)(pt - (point->degree * 100));
-	point->dec_minute = (uint32_t)((pt - (point->degree * 100 + point->minute)) * 10000);
+	/*--------------------------------------------------
+	* //3113.3156
+	* float pt =  strtof(data, NULL);
+	* point->degree = (uint16_t)(pt / 100);
+	* point->minute = (uint16_t)(pt % 100));
+	* point->dec_minute = (uint32_t)((pt - (point->degree * 100 + point->minute)) * 10000);
+	*--------------------------------------------------*/
+	char * tmp = data;	
+	uint8_t i = 0; 
+	uint32_t val = 0;
+
+	while ( *(data + i) != '.'){
+		val <<= 8;
+		val |=  *(tmp + i);
+	}	
+	point->degree = (uint16_t)(val / 100);
+	point->minute = (uint16_t)(val % 100);
+
+	tmp = strchr(data, ".");
+	point->dec_minute = 0;
+	i = 0;
+	while ( *(tmp + i) != ','){
+		point->dec_minute <<= 8;
+		point->dec_minute |=  *(tmp + i);
+	}	
 
 	return 0;
 }
 
 
 void nmea_coordonate_to_string(struct coordonate_s *point, char * string, uint32_t length){
-	snprintf(string, length, "%c%d.%02d%05d"
+	sprintf(string, "%c%d.%02d%05d"
 			, (point->cardinal == 'E'||point->cardinal == 'N'?'+':'-')
 			, point->degree
 			, point->minute
@@ -59,88 +81,122 @@ enum{
 
 #define KNOT_TO_MS				0.5144
 #define NMEA_SEPARATOR			","
-//'$GPRMC,120159.000,A,4317.4396,N,00529.7541,E,0.57,171.53,070711,,,A'
+//'$GPRMC,12019.000,A,4317.4396,N,00529.7541,E,0.57,171.53,070711,,,A'
 static int nmea_parse_RMC(char *data){
-	char * ptr_str;
-	uint32_t state = RMC_MESAGE_ID;
-	float tmp_float;
-	uint32_t tmp;
+	/*--------------------------------------------------
+	* char * ptr_str;
+	* uint32_t state = RMC_MESAGE_ID;
+	* float tmp_float;
+	* uint32_t tmp;
+	*--------------------------------------------------*/
 
-	for (ptr_str = strtok(data, NMEA_SEPARATOR); ptr_str; ptr_str = strtok(NULL, NMEA_SEPARATOR)){
-		switch(state){
-			case 	RMC_MESAGE_ID:
-				break;
+	/*--------------------------------------------------
+	* for (ptr_str = strtok(data, NMEA_SEPARATOR); ptr_str; ptr_str = strtok(NULL, NMEA_SEPARATOR)){
+	* 	switch(state){
+	* 		case 	RMC_MESAGE_ID:
+	* 			break;
+	*--------------------------------------------------*/
 
-			case 	RMC_UTC_TIME:
-				tmp = (uint32_t)strtof(ptr_str, NULL);
-				mydata.date_time.hour = (uint8_t)(tmp / 10000);
-				mydata.date_time.minute = (uint8_t)((tmp - (mydata.date_time.hour * 10000))/100);
-				mydata.date_time.seconde = (uint8_t)(tmp - ( mydata.date_time.hour * 10000)
-						- ( mydata.date_time.minute * 100));
+	/*--------------------------------------------------
+	* 		case 	RMC_UTC_TIME:
+	* 			tmp = (uint32_t)strtof(ptr_str, NULL);
+	* 			gps_mydata.date_time.hour = (uint8_t)(tmp / 10000);
+	* 			gps_mydata.date_time.minute = (uint8_t)((tmp - (gps_mydata.date_time.hour * 10000))/100);
+	* 			gps_mydata.date_time.seconde = (uint8_t)(tmp - ( gps_mydata.date_time.hour * 10000)
+	* 					- ( gps_mydata.date_time.minute * 100));
+	*--------------------------------------------------*/
 
-				snprintf(mydata.date_time.time_str, sizeof(mydata.date_time.time_str)
-						, "%d:%d:%d"
-						, mydata.date_time.hour
-						, mydata.date_time.minute
-						, mydata.date_time.seconde);
-				break;
+	/*--------------------------------------------------
+	* 			sprintf(gps_mydata.date_time.time_str, "%d:%d:%d"
+	* 					, gps_mydata.date_time.hour
+	* 					, gps_mydata.date_time.minute
+	* 					, gps_mydata.date_time.seconde);
+	* 			break;
+	*--------------------------------------------------*/
 
-			case 	RMC_STATUS:
-				break;
+	/*--------------------------------------------------
+	* 		case 	RMC_STATUS:
+	* 			break;
+	*--------------------------------------------------*/
 
-			case 	RMC_LATITUDE:
-				//convert_str_to_point(ptr_str, &mydata.latitude);
-				break;
+	/*--------------------------------------------------
+	* 		case 	RMC_LATITUDE:
+	* 			//convert_str_to_point(ptr_str, &gps_mydata.latitude);
+	* 			break;
+	*--------------------------------------------------*/
 
-			case 	RMC_NS_INDICATOR:
-				//mydata.latitude.cardinal = *ptr_str;
-				break;
+	/*--------------------------------------------------
+	* 		case 	RMC_NS_INDICATOR:
+	* 			//gps_mydata.latitude.cardinal = *ptr_str;
+	* 			break;
+	*--------------------------------------------------*/
 
-			case 	RMC_LONGITUDE:
-				//convert_str_to_point(ptr_str, &mydata.longitude);
-				break;
+	/*--------------------------------------------------
+	* 		case 	RMC_LONGITUDE:
+	* 			//convert_str_to_point(ptr_str, &gps_mydata.longitude);
+	* 			break;
+	*--------------------------------------------------*/
 
-			case 	RMC_EO_INDICATOR:
-				//mydata.longitude.cardinal = *ptr_str;
-				break;
+	/*--------------------------------------------------
+	* 		case 	RMC_EO_INDICATOR:
+	* 			//gps_mydata.longitude.cardinal = *ptr_str;
+	* 			break;
+	*--------------------------------------------------*/
 
-			case 	RMC_SPEED:
-				tmp_float = strtof(ptr_str, NULL);
-				mydata.speed_horizontal = (uint16_t) (tmp_float * KNOT_TO_MS);
-				break;
+	/*--------------------------------------------------
+	* 		case 	RMC_SPEED:
+	* 			tmp_float = strtof(ptr_str, NULL);
+	* 			gps_mydata.speed_horizontal = (uint16_t) (tmp_float * KNOT_TO_MS);
+	* 			break;
+	*--------------------------------------------------*/
 
-			case 	RMC_COURSE:
-				//mydata.azimuth = (uint16_t) (strtol(ptr_str, NULL, 10));
-				break;
+	/*--------------------------------------------------
+	* 		case 	RMC_COURSE:
+	* 			//gps_mydata.azimuth = (uint16_t) (strtol(ptr_str, NULL, 10));
+	* 			break;
+	*--------------------------------------------------*/
 
-			case 	RMC_DATE:
-				tmp = (uint32_t)strtol(ptr_str, NULL, 10);
-				mydata.date_time.day = (uint8_t)(tmp / 10000);
-				mydata.date_time.month = (uint8_t)((tmp - (mydata.date_time.day * 10000))/100);
-				mydata.date_time.year = 2000 + (uint8_t)(tmp - ( mydata.date_time.day * 10000)
-						- ( mydata.date_time.month * 100));
+	/*--------------------------------------------------
+	* 		case 	RMC_DATE:
+	* 			tmp = (uint32_t)strtol(ptr_str, NULL, 10);
+	* 			gps_mydata.date_time.day = (uint8_t)(tmp / 10000);
+	* 			gps_mydata.date_time.month = (uint8_t)((tmp - (gps_mydata.date_time.day * 10000))/100);
+	* 			gps_mydata.date_time.year = 2000 + (uint8_t)(tmp - ( gps_mydata.date_time.day * 10000)
+	* 					- ( gps_mydata.date_time.month * 100));
+	*--------------------------------------------------*/
 
-				snprintf(mydata.date_time.date_str, sizeof(mydata.date_time.date_str)
-						, "%d/%d/%d"
-						, mydata.date_time.day
-						, mydata.date_time.month
-						, mydata.date_time.year);
+	/*--------------------------------------------------
+	* 			sprintf(gps_mydata.date_time.date_str, "%d/%d/%d"
+	* 					, gps_mydata.date_time.day
+	* 					, gps_mydata.date_time.month
+	* 					, gps_mydata.date_time.year);
+	*--------------------------------------------------*/
 
-				break;
+	/*--------------------------------------------------
+	* 			break;
+	*--------------------------------------------------*/
 
-			case 	RMC_MAGNETIC_VARIATION:
-				break;
+	/*--------------------------------------------------
+	* 		case 	RMC_MAGNETIC_VARIATION:
+	* 			break;
+	*--------------------------------------------------*/
 
-			case 	RMC_EASTWEST_INDICATOR:
-				break;
+	/*--------------------------------------------------
+	* 		case 	RMC_EASTWEST_INDICATOR:
+	* 			break;
+	*--------------------------------------------------*/
 
-			case RMC_MODE:
-				//mydata.gps_mode = *ptr_str;
-				break;
-		}
+	/*--------------------------------------------------
+	* 		case RMC_MODE:
+	* 			//gps_mydata.gps_mode = *ptr_str;
+	* 			break;
+	* 	}
+	*--------------------------------------------------*/
 
-	state++;
-	}
+	/*--------------------------------------------------
+	* state++;
+	* }
+	*--------------------------------------------------*/
 	return 0;
 }
 
@@ -165,88 +221,90 @@ enum{
 
 int nmea_parse_GGA(char *data){
  	char * ptr_str;
-	uint32_t state = GGA_MESSAGE_ID;
+	/*--------------------------------------------------
+	* uint32_t state = GGA_MESSAGE_ID;
+	*--------------------------------------------------*/
 
-	for (ptr_str = strtok(data, NMEA_SEPARATOR); ptr_str; ptr_str = strtok(NULL, NMEA_SEPARATOR)){
-		switch(state){
-			case GGA_MESSAGE_ID:
-				break;
-			case 	GGA_UTC_TIME:
-				break;
-			case GGA_LATITUDE:
-				convert_str_to_point(ptr_str, &mydata.latitude);
-				break;
-			case GGA_NS_INDICATOR:
-				mydata.latitude.cardinal = *ptr_str;
-				break;
-			case GGA_LONGITUDE:
-				convert_str_to_point(ptr_str, &mydata.longitude);
-				break;
-			case GGA_EW_INDICATOR:
-				mydata.longitude.cardinal = *ptr_str;
-				break;
-			case GGA_POSITION_FIX:
-				if( *ptr_str != '0' ){
-					mydata.data_valide = 1;
-					if (*ptr_str == '1' ){
-						mydata.gps_mode = 'G';
-					}else if (*ptr_str == '2' ){
-						mydata.gps_mode = 'D';
-					}else if (*ptr_str == '6' ){
-						mydata.gps_mode = 'R';
-					}
-				} else {
-					mydata.data_valide = 0;
-				}
-				break;
-			case GGA_SATELITE_USED:
-				mydata.sat_number = (uint8_t)strtol(ptr_str, NULL, 10);
-				break;
-			case GGA_HDOP:
-				break;
-			case GGA_MSL_ALTITUDE:
-				mydata.altitude = (uint16_t)strtof(ptr_str, NULL);
-				break;
-			case GGA_UNITS_ALT:
-				break;
-			case GGA_GEOID_SEPARATION:
-				break;
-			case GGA_UNITS_SEP:
-				break;
-			case GGA_AGE_OF_DIFF:
-				break;
-			case GGA_DIFF_REF_STATION_ID:
-				break;
-			case GGA_CS:
-				break;
-		}
+	/*--------------------------------------------------
+	* for (ptr_str = strtok(data, NMEA_SEPARATOR); ptr_str; ptr_str = strtok(NULL, NMEA_SEPARATOR)){
+	* 	switch(state){
+	* 		case GGA_MESSAGE_ID:
+	* 			break;
+	* 		case 	GGA_UTC_TIME:
+	* 			break;
+	* 		case GGA_LATITUDE:
+	* 			convert_str_to_point(ptr_str, &gps_mydata.latitude);
+	* 			break;
+	* 		case GGA_NS_INDICATOR:
+	* 			gps_mydata.latitude.cardinal = *ptr_str;
+	* 			break;
+	* 		case GGA_LONGITUDE:
+	* 			convert_str_to_point(ptr_str, &gps_mydata.longitude);
+	* 			break;
+	* 		case GGA_EW_INDICATOR:
+	* 			gps_mydata.longitude.cardinal = *ptr_str;
+	* 			break;
+	* 		case GGA_POSITION_FIX:
+	* 			if( *ptr_str != '0' ){
+	* 				gps_mydata.data_valide = 1;
+	* 				if (*ptr_str == '1' ){
+	* 					gps_mydata.gps_mode = 'G';
+	* 				}else if (*ptr_str == '2' ){
+	* 					gps_mydata.gps_mode = 'D';
+	* 				}else if (*ptr_str == '6' ){
+	* 					gps_mydata.gps_mode = 'R';
+	* 				}
+	* 			} else {
+	* 				gps_mydata.data_valide = 0;
+	* 			}
+	* 			break;
+	* 		case GGA_SATELITE_USED:
+	* 			gps_mydata.sat_number = (uint8_t)strtol(ptr_str, NULL, 10);
+	* 			break;
+	* 		case GGA_HDOP:
+	* 			break;
+	* 		case GGA_MSL_ALTITUDE:
+	* 			gps_mydata.altitude = (uint16_t)strtof(ptr_str, NULL);
+	* 			break;
+	* 		case GGA_UNITS_ALT:
+	* 			break;
+	* 		case GGA_GEOID_SEPARATION:
+	* 			break;
+	* 		case GGA_UNITS_SEP:
+	* 			break;
+	* 		case GGA_AGE_OF_DIFF:
+	* 			break;
+	* 		case GGA_DIFF_REF_STATION_ID:
+	* 			break;
+	* 		case GGA_CS:
+	* 			break;
+	* 	}
+	*--------------------------------------------------*/
 
-	state++;
-	}
+	/*--------------------------------------------------
+	* state++;
+	* }
+	*--------------------------------------------------*/
 	return 0;
 }
 
-int nmea_parse_data(char *data){
-	char * tmp = strchr(data, '*');
+int nmea_parse_data(void){
+
+	char * tmp = strchr(nmea_in_buf, '*');
 	
 	if ( !tmp ){
-		DEBUGF("NMEA PARSE DATA ERROR, * not found.\n");
+		DEBUGF("NMEA PARSE DATA ERROR, '*' not found.\n");
 		return -1;
 	}
-	if (!strncmp(data, "$GPRMC", strlen("$GPRMC"))){
+	if (!strncmp(nmea_in_buf, "$GPRMC", strlen("$GPRMC"))){
 		*tmp = 0;
-		return nmea_parse_RMC(data);
-	} else if (!strncmp(data, "$GPGGA", strlen("$GPGGA"))){
+		return nmea_parse_RMC(nmea_in_buf);
+	} else if (!strncmp(nmea_in_buf, "$GPGGA", strlen("$GPGGA"))){
 		*tmp = 0;
-		return nmea_parse_GGA(data);
+		return nmea_parse_GGA(nmea_in_buf);
 	} else {
-		DEBUGF("NMEA PARSE '%s'\n", data);
+		DEBUGF("NMEA PARSE '%s'\n", nmea_in_buf);
 	}
-	/*--------------------------------------------------
-	* else if (strcmp(data, "$GPGSV")){
-	* 	return nmea_parse_GSV(data);
-	* } 
-	*--------------------------------------------------*/
 	return 0;
 }
 
@@ -266,7 +324,7 @@ static int nmea_crc_calculate(char *crc, char *data, uint32_t length){
 		return -1;
 	}
 
-	for (n=1; n < length; n++){
+	for (n = 1; n < length; n++){
 		if (data[n] == '*'){
 			/*--------------------------------------------------
 			* DEBUGF("End of NMEA sequence found.\n");
@@ -279,10 +337,11 @@ static int nmea_crc_calculate(char *crc, char *data, uint32_t length){
 	return -1;
 }
 
-int nmea_validate_sentence(char * data){
+int nmea_validate_sentence(uint16_t length){
+	
 	char crc[8];
-	uint32_t length = strlen(data);
-	if(nmea_crc_calculate(crc, data, length)){
+	
+	if(nmea_crc_calculate(crc, nmea_in_buf, length - 4)){
 		DEBUGF("GSP_wrong NMEA format.");
 		return -1;
 	}
@@ -290,33 +349,32 @@ int nmea_validate_sentence(char * data){
 	* DEBUGF("crc calculate : '%s'\n", crc);
 	*--------------------------------------------------*/
 
-	char * tmp = strchr(data, '*');
+	char * tmp = nmea_in_buf + length - 4;
 	tmp++;
 	/*--------------------------------------------------
 	* DEBUGF("crc frame : '%s'\n", tmp);
 	*--------------------------------------------------*/
-	if( strcmp(tmp, crc) ){
+	if( (*tmp != *crc) && (*(tmp + 1) != *(crc + 1))){
 		DEBUGF("GSP_wrong NMEA crc.\n");
 		return -1;
 	}
 	return 0;
 }
 
-char * nmea_add_crc(char * data, uint32_t length){
+uint32_t nmea_add_crc(char * data, uint32_t length){
 	char crc[8];
 	if (nmea_crc_calculate(crc, data, length)){
 		DEBUGF("GSP_wrong NMEA format.\n");
-		return NULL;
+		return 0;
 	}
 	
-	if (strlen(data) + 4 >= length){
-		DEBUGF("GSP_wrong Not enought place to insert crc.\n");
-		return NULL;
-	}
-	
-	strcat(data, crc);
-	strcat(data, "\r\n");
-	return data;	
+	*(data + length) = crc[0];
+	*(data + length + 1) = crc[1];
+	*(data + length + 2) = '\r';
+	*(data + length + 3) = '\n';
+	*(data + length + 4) = 0;
+
+	return length + 4;	
 }	
 
 /*--------------------------------------------------
@@ -351,78 +409,67 @@ char * nmea_add_crc(char * data, uint32_t length){
 *--------------------------------------------------*/
 
 #define NMEA_INIT_PSRF100		"$PSRF100,%d,%d,8,1,0*"
-int nmea_switch_to_sirf(void){
+int nmea_switch_to_sirf(enum sim18_BAUDRATE baudrate){
 
-	char buffer[64];
+	char * buffer = nmea_out_buf;
+	uint32_t length;
+
+	while(*nmea_out_buf);
 
 	/*	set prefered messages	*/
-	snprintf(buffer, sizeof(buffer), NMEA_INIT_PSRF100
+	length = sprintf(buffer, NMEA_INIT_PSRF100
 			, sim18_SIRF
-			, sim18_4800);
-	nmea_add_crc(buffer, sizeof(buffer));
+			, baudrate);
+	length = nmea_add_crc(buffer, length);
 
 	DEBUGF("NMEA switch to sirf message '%s'.\n", buffer);
-	int res = gps_write((unsigned char *)buffer, strlen(buffer));
-	if (res < 0){
-		DEBUGF("GPS WRITE ERROR\n");
-		return -1;
-	}
-	sim18_port_config.baudrate = sim18_4800;
-	sim18_port_config.protocol = sim18_SIRF;
-	/*--------------------------------------------------
-	* gps_restart();
-	*--------------------------------------------------*/
+
+	sim18_write_data(length);
 
 	return 0;
 }
 
 #define NMEA_INIT_PSRF104	"$PSRF104,%s,%s,%d,0,%d,%d,%d,%d*"
 uint32_t nmea_warn_restart(void){
-	char buffer[128];
+	char *buffer = nmea_out_buf;
 	char latitude[64];
 	char longitude[64];
-	
-	/*	set prefered messages	*/
-	nmea_coordonate_to_string(&mydata.latitude, latitude, sizeof(latitude));
-	nmea_coordonate_to_string(&mydata.longitude, longitude, sizeof(longitude));
+	uint32_t length;
 
-	snprintf(buffer, sizeof(buffer), NMEA_INIT_PSRF104
+	while(*nmea_out_buf);
+
+	/*	set prefered messages	*/
+	nmea_coordonate_to_string(&gps_mydata.latitude, latitude, sizeof(latitude));
+	nmea_coordonate_to_string(&gps_mydata.longitude, longitude, sizeof(longitude));
+
+	length = sprintf(buffer, NMEA_INIT_PSRF104
 			, latitude
 			, longitude
-			, mydata.altitude
-			, mydata.time_of_week
-			, mydata.week_no
-			, mydata.channel_count
-			, mydata.reset_cfg);
+			, gps_mydata.altitude
+			, gps_mydata.time_of_week
+			, gps_mydata.week_no
+			, gps_mydata.channel_count
+			, gps_mydata.reset_cfg);
 
-	nmea_add_crc(buffer, sizeof(buffer));
+	length = nmea_add_crc(buffer, length);
 	DEBUGF("NMEA init 104 message '%s'.\n", buffer);
-	/*--------------------------------------------------
-	 * int res = gps_write(buffer, strlen(buffer));
-	 * if (res != strlen(buffer)){
-	 * 	DEBUGF("GPS WRITE ERROR\n");
-	 * 	continue;
-	 * }
-	 * gps_port_config.baudrate = PSRF100_value.baudrate;
-	 * if (gps_port_config.protocol == PSRF100_tab[param_n].protocol){
-	 *		gps_restart();
-	 *	}
-	 *--------------------------------------------------*/
+	sim18_write_data(length);
 
 	return 0;
 }
 
 #define NMEA_INIT_PSRF117		"$PSRF117,16*0B"
 int nmea_stop(void){
-	char buffer[64];
-	snprintf(buffer, sizeof(buffer), NMEA_INIT_PSRF117);
+	
+	char * buffer = nmea_out_buf;
+	uint32_t length;
+
+	while(*nmea_out_buf);
+
+	sprintf(buffer, NMEA_INIT_PSRF117);
 	DEBUGF("NMEA init 117 message '%s'.\n", buffer);
-	/*--------------------------------------------------
-	* int res = gps_write(buffer, strlen(buffer));
-	* if (res != strlen(buffer)){
-	* 	DEBUGF("GPS STOP ERROR\n");
-	*  }
-	*--------------------------------------------------*/
+	sim18_write_data(length);
+
 	return 0;
 }
 
@@ -433,17 +480,16 @@ enum {
 	CRC_2,
 };
 
-int nmea_get_frame(char data){
+int nmea_get_frame(char read_value){
 
-	static char *data_ptr;
-	char read_value;
+	static uint8_t *data_ptr;
 	uint32_t frame_completed = 0;
 
 	static uint32_t state = WAIT_START;
 
 	switch (state){
 		case WAIT_START:
-			data_ptr = data;
+			data_ptr = nmea_in_buf;
 
 			if(read_value == '$'){
 				state++;
@@ -471,15 +517,18 @@ int nmea_get_frame(char data){
 				state = WAIT_START;
 			break;
 		default :
-			data_ptr = data;
+			data_ptr = nmea_in_buf;
 			frame_completed = 0;
 			state = WAIT_START;
 			break;
 	}
 
 	if (frame_completed){
-		if (nmea_validate_sentence(data)){
-			DEBUGF("VALIDATE ERROR '%s'\n", data);
+		if (nmea_validate_sentence((uint16_t)(data_ptr - nmea_in_buf))){
+			DEBUGF("VALIDATE ERROR.\n");
+		}else{
+			DEBUGF("FRAME VALID.\n");
+			nmea_parse_data();
 		}
 		return 0;
 	}
@@ -487,3 +536,9 @@ int nmea_get_frame(char data){
 	return 1;
 }
 
+void nmea_init(void){
+	
+	nmea_in_buf = sim18_in_buf;
+	nmea_out_buf = sim18_out_buf;
+	
+}

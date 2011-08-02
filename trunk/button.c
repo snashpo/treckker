@@ -15,7 +15,9 @@
 
 enum button_state_n button_state = BUTTON_RELEASED;
 
-static uint32_t state = 0;
+/*--------------------------------------------------
+* static uint32_t state = 0;
+*--------------------------------------------------*/
 static uint32_t last_change = 0;
 
 #define VALID_DELAY			(3 * TICK_1S)

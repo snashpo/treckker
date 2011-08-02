@@ -47,14 +47,17 @@ COBJECTS = printf.o \
 			lcd.o \
 			crc.o \
 			battery.o \
-			LSM303.o \
-			vector.o \
 			sim18.o \
 			nmea.o \
-			sirf.o \
 			tools.o \
 			sht1x.o
-			
+
+			#--------------------------------------------------
+			# sirf.o \
+			# LSM303.o \
+			# vector.o \
+			#-------------------------------------------------- 
+					
 
 LSOURCES        = $(patsubst %.o,%.c,$(LOBJECTS))
 CSOURCES        = $(patsubst %.o,%.c,$(COBJECTS))
