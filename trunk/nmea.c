@@ -483,9 +483,9 @@ enum {
 int nmea_get_frame(char read_value){
 
 	static uint8_t *data_ptr;
-	uint32_t frame_completed = 0;
-
 	static uint32_t state = WAIT_START;
+	
+	uint32_t frame_completed = 0;
 
 	switch (state){
 		case WAIT_START:

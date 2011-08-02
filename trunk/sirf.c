@@ -1,11 +1,8 @@
-#include <unistd.h>
-#include <sys/types.h>
-#include <stdint.h>
 #include <stdio.h>
-#include <sys/stat.h>
 #include <string.h>
-#include <fcntl.h>
-#include <stdlib.h>
+
+#include "stm32f10x.h"
+
 
 #include "sim18.h"
 #include "sirf.h"
@@ -18,7 +15,10 @@
 #endif
 
 #define HI(n)		((n) >> 8)
-#define LO(n)		((n) & 0xff)
+#define LO(n)		((n) & 0x00ff)
+
+uint8_t * sirf_in_buf;
+uint8_t * sirf_out_buf;
 
 
 #define sirf_CRC_FILL		0
@@ -51,16 +51,16 @@ static uint8_t sirf_crc_calculate(uint16_t *crc, uint8_t *data){
 
 }
 
-int sirf_validate_sentence(uint8_t * data){
+int sirf_validate_sentence(void){
 	uint16_t crc_calc, crc_frame;
-	if(sirf_crc_calculate(&crc_calc, data)){
+	if(sirf_crc_calculate(&crc_calc, sirf_in_buf)){
 		DEBUGF("GSP_wrong sirf format.");
 		return -1;
 	}
 
-	uint16_t len = ((uint16_t)(*(data + 2)) << 8) | * (data + 3);
-	crc_frame = (((uint16_t)*(data + len + 4)) << 8)
-					| (uint16_t)*(data + len + 5);
+	uint16_t len = ((uint16_t)(*(sirf_in_buf + 2)) << 8) | *(sirf_in_buf + 3);
+	crc_frame = (((uint16_t)*(sirf_in_buf + len + 4)) << 8)
+					| (uint16_t)*(sirf_in_buf + len + 5);
 	DEBUGF("GPS sirf  frame CRC: 0x%04x, calculate CRC: 0x%04x.\n", crc_frame, crc_calc);
 	if( crc_calc != crc_frame ){
 		DEBUGF("GSP_wrong sirf crc.\n");
@@ -91,8 +91,8 @@ int sirf_add_crc(uint8_t * data, uint32_t length){
 }
 
 
-int sirf_to_nmea( uint32_t speed) 
-{
+int sirf_to_nmea(enum sim18_BAUDRATE baudrate){
+
 	static uint8_t msg[] = {
 		0xa0, 0xa2, 0x00, 0x18,
 		0x81, 
@@ -108,24 +108,24 @@ int sirf_to_nmea( uint32_t speed)
 		0x12, 0xc0, /* 4800 bps */
 		0x00, 0x00, 0xb0, 0xb3};
 
-	msg[26] = (uint8_t)HI(speed);
-	msg[27] = (uint8_t)LO(speed);
+	uint16_t length = ((((uint16_t)msg[2]) << 8) | msg[3]) + 8;
+
+	msg[26] = (uint8_t)HI(baudrate);
+	msg[27] = (uint8_t)LO(baudrate);
 
 	sirf_add_crc(msg, sizeof(msg));
 
-	if (gps_write((unsigned char *)msg, sizeof(msg)) < 0){
-		return -1;
-	}
+	memcpy(msg, sirf_out_buf, length);
 
-	sim18_port_config.protocol = sim18_NMEA;
-	sim18_port_config.baudrate = speed;
+	sim18_write_data(length);
 		
 	return 0;
 }
 
-static int sirf_set_ptf_mode(void){
+int sirf_set_ptf_mode(void){
 	static uint8_t msg[] = {
-		0xa0, 0xa2, 0x00, 0x0F,
+		0xa0, 0xa2, 
+		0x00, 0x0F,
 		0xA7,
 	  	0x00, 0x00, 0x3A, 0x78,	/* Max time for sleep ms (15s)*/
 	  	0x00, 0x00, 0x3A, 0x78, /* Max sat search	ms (30s)*/
@@ -133,67 +133,83 @@ static int sirf_set_ptf_mode(void){
 		0x00, 0x00,					/* Enable adaptative Trickle mode */
 		0x00, 0x00, 0xb0, 0xb3
 	};
+	uint16_t length = ((((uint16_t)msg[2]) << 8) | msg[3]) + 8;
 
 	sirf_add_crc(msg, sizeof(msg));
 	print_buf(msg, sizeof(msg));	
+	memcpy(msg, sirf_out_buf, length);
 
-	if (gps_write((unsigned char *) msg , sizeof(msg)) < 0){
-		return -1;
-	}
+	sim18_write_data(length);
 
 	return 0;
 }
 
-static int sirf_set_trickle_mode(void){
+int sirf_set_trickle_mode(void){
  	static uint8_t msg[] = {
- 		0xa0, 0xa2, 0x00, 0x09,
+ 		0xa0, 0xa2, 
+		0x00, 0x09,
  		0x97,							
  		0x00, 0x01,					/* PTF ON=1 OFF=0 */
  		0x00, 0xC8,					/* %Time ON (duty cycle) 500 -> 50%*/
  		0x00, 0x00, 0x00, 0xC8, /* Time on (200ms) */
  		0x00, 0x00, 0xb0, 0xb3
  	};
- 
+	uint16_t length = ((((uint16_t)msg[2]) << 8) | msg[3]) + 8;
  	sirf_add_crc(msg, sizeof(msg));
  
  	print_buf(msg, sizeof(msg));	
- 	if (gps_write((unsigned char *) msg, sizeof(msg)) < 0){
- 		return -1;
- 	}
- 
+	memcpy(msg, sirf_out_buf, length);
+
+	sim18_write_data(length);
  	return 0;
 }
 
 
-static int sirf_set_msg_41_2s(void){
+int sirf_set_msg_41_2s(void){
 	static uint8_t msg[] = {
 
-		0xA0, 0xA2, 0x00, 0x08,
-		0xA6, 
+		0xA0, 0xA2, 
+		0x00, 0x08,					/* payload length	*/
+		0xA6,							/* message id	*/
 		0x00,							 
 		0x29,							/* Message 41 : Geodetic info	*/
-		0x05,							/* Every 5 sec	*/
+		0x01,							/* Every 1 sec	*/
 		0x00, 0x00, 0x00, 0x00, /* Not used, set to zero */
 		0x00, 0xAD, 
 		0xB0, 0xB3};
+
+	uint16_t length = ((((uint16_t)msg[2]) << 8) | msg[3]) + 8;
 	sirf_add_crc(msg, sizeof(msg));
 
 	print_buf(msg, sizeof(msg));	
-	if (gps_write((unsigned char *) msg, sizeof(msg)) < 0){
-		return -1;
-	}
+	memcpy(msg, sirf_out_buf, length);
+
+	sim18_write_data(length);
+
+	return 0;
+}
+
+int sirf_stop(void){
+	static uint8_t msg[] = {
+		0xA0, 0xA2, 0x00, 0x00,
+		0xCD, 
+		0x10,							 
+		0x00, 0xAD, 
+		0xB0, 0xB3};
+
+	uint16_t length = ((((uint16_t)msg[2]) << 8) | msg[3]) + 8;
+	sirf_add_crc(msg, sizeof(msg));
+
+	print_buf(msg, sizeof(msg));	
+	memcpy(msg, sirf_out_buf, length);
+
+	sim18_write_data(length);
 
 	return 0;
 }
 
 
-int sirf_init( void ){
-	sirf_set_trickle_mode();
-	sirf_set_ptf_mode();
-	sirf_set_msg_41_2s();
-	// sirf_to_nmea(4800);
-	return 0;
-}
+
 
 static int translate_sirf_coordonnate(uint8_t * data, uint8_t *index
 		, struct coordonate_s * point){
@@ -214,53 +230,65 @@ static int translate_sirf_coordonnate(uint8_t * data, uint8_t *index
  	return 0;
 }
 
-static int sirf_parse_message_id_41(uint8_t *data){
+/*--------------------------------------------------
+ * Message ID 41 sample:
+*  A0 A2 
+*  00 5B
+*  29 00 00 02 04 04 E8 1D 97 A7 62 07 D4 02 06 11 36 61 DA 1A 80 01 58 16 47
+*  03 DF B7 55 48 8F FF FF FA C8 00 00 04 C6 15 00 00 00 00 00 00 00 00 00 00
+*  00 00 00 BB 00 00 01 38 00 00 00 00 00 00 6B 0A F8 61 00 00 00 00 00 1C 13 
+*  14 00 00 00 00 00 00 00 00 00 00 00 00 08 05 00 
+*  11 03 
+*  B0 B3
+*--------------------------------------------------*/
+int sirf_parse_message_id_41(uint8_t *data){
  	
 	int index;
- 	mydata.lock = 1;
+ 	gps_mydata.lock = 1;
  
 	index = SIRF_MSG_41_NAV_VALID_INDEX;
- 	pop_int16(data, &index, &mydata.data_valide);
-	pop_int16(data, &index, &mydata.gps_mode);
+ 	pop_int16(data, &index, &gps_mydata.data_valide);
+	pop_int16(data, &index, &gps_mydata.gps_mode);
 
 	index = SIRF_MSG_41_EXT_WEEK_NUM_INDEX;
-	pop_int16(data, &index, &mydata.week_no);
- 	pop_int16(data, &index, &mydata.time_of_week);
+	pop_int16(data, &index, &gps_mydata.week_no);
+ 	pop_int16(data, &index, &gps_mydata.time_of_week);
 
 	index = SIRF_MSG_41_LAT_INDEX;
- 	translate_sirf_coordonnate(data, &index, &mydata.latitude);
- 	translate_sirf_coordonnate(data, &index, &mydata.longitude);
+ 	translate_sirf_coordonnate(data, &index, &gps_mydata.latitude);
+ 	translate_sirf_coordonnate(data, &index, &gps_mydata.longitude);
 
 	index = SIRF_MSG_41_ALT_MSL_INDEX;
- 	pop_int32(data, &index, &mydata.altitude);
+ 	pop_int32(data, &index, &gps_mydata.altitude);
 
  	index = SIRF_MSG_41_SPEED_OVER_GOURND_INDEX;
- 	pop_int16(data, &index, &mydata.speed_horizontal);
+ 	pop_int16(data, &index, &gps_mydata.speed_horizontal);
 
 	index = SIRF_MSG_41_CLIMB_RATE_INDEX;
- 	pop_int16(data, &index, &mydata.speed_vertical);
+ 	pop_int16(data, &index, &gps_mydata.speed_vertical);
 
 	index = SIRF_MSG_41_MONTH_INDEX;
- 	pop_int16(data, &index, &mydata.date_time.year);
- 	mydata.date_time.month	= *(data + index++);
- 	mydata.date_time.day	= *(data + index++);
- 	mydata.date_time.hour	= *(data + index++);
- 	mydata.date_time.minute	= *(data + index++);
- 	pop_int16(data, &index, &mydata.date_time.seconde);
+ 	pop_int16(data, &index, &gps_mydata.date_time.year);
+ 	gps_mydata.date_time.month	= *(data + index++);
+ 	gps_mydata.date_time.day	= *(data + index++);
+ 	gps_mydata.date_time.hour	= *(data + index++);
+ 	gps_mydata.date_time.minute = *(data + index++);
+ 	pop_int16(data, &index, &gps_mydata.date_time.seconde);
 
 	index = SIRF_MSG_41_CLOCK_DRIFT_INDEX;
-	mydata.clk_drift	= *(data + index++);
+	gps_mydata.clk_drift	= *(data + index++);
 
 	index = SIRF_MSG_41_NB_SV_IN_FIX_INDEX;
- 	mydata.sat_number	= *(data + index++);
+ 	gps_mydata.sat_number	= *(data + index++);
 	
-// 	mydata.GPS_ALMANAC_RESET_MODE	= ;
- 	mydata.lock = 0;
+// 	gps_mydata.GPS_ALMANAC_RESET_MODE	= ;
+ 	gps_mydata.lock = 0;
  	return 0;
 }
 
-int sirf_parse_data(uint8_t *data){
+int sirf_parse_data(void){
 
+	uint8_t * data = sirf_in_buf;
 	switch (*(data + 3))
 	{
 		/*--------------------------------------------------
@@ -441,7 +469,7 @@ enum {
 
 };
 
-int sirf_get_frame(uint8_t *data){
+void sirf_get_frame(uint8_t read_value){
 
 	static uint8_t *data_ptr;
 	static uint16_t frame_length = 0;
@@ -449,18 +477,11 @@ int sirf_get_frame(uint8_t *data){
 	static uint16_t frame_byte_number = 0;
 	static uint32_t state = SIRF_WAIT_START1;
 
-	unsigned char read_value;
 	uint32_t frame_completed = 0;
-	uint32_t init_parse = 0;
-	int returned_value = 1;
-
-	if (gps_read(&read_value) < 0){
-		return -1;
-	}
 
 	switch (state){
 		case SIRF_WAIT_START1:
-			data_ptr = data;
+			data_ptr = sirf_in_buf;
 			if(read_value == (unsigned char)SIRF_CHAR_START_1){
 				state++;
 				*data_ptr = (uint8_t)read_value;
@@ -473,7 +494,7 @@ int sirf_get_frame(uint8_t *data){
 				*data_ptr = (uint8_t)read_value;
 				data_ptr++;
 			}else{
-				init_parse = 1;	
+				state = SIRF_WAIT_START1;	
 			}
 			break;
 		case SIRF_WAIT_LENGTH1:
@@ -494,7 +515,7 @@ int sirf_get_frame(uint8_t *data){
 			frame_byte_number++;
 			if (frame_byte_number == 1 
 					&& (uint8_t)read_value != 0x29){
-				init_parse = 1;
+				state = SIRF_WAIT_START1;
 			}
 			if(frame_byte_number == frame_length){
 				state++;
@@ -518,7 +539,7 @@ int sirf_get_frame(uint8_t *data){
 				*data_ptr = (uint8_t)read_value;
 				data_ptr++;
 			}else{
-				init_parse = 1;	
+				state = SIRF_WAIT_START1;	
 			}
 			break;
 		case SIRF_WAIT_END2:
@@ -526,35 +547,37 @@ int sirf_get_frame(uint8_t *data){
 				*data_ptr = (uint8_t)read_value;
 				data_ptr++;
 				frame_completed = 1;
-			}else{
-				init_parse = 1;	
 			}
+			state = SIRF_WAIT_START1;	
 			break;
 
 		default :
-			init_parse = 1;
+			state = SIRF_WAIT_START1;
 			break;
 	}
-
 	if (frame_completed){
-		print_buf(data, frame_length + 8);
-		returned_value = 0;
-
-		if (sirf_validate_sentence(data)){
-			DEBUGF("VALIDATE ERROR '%s'\n", data);
-			init_parse = 1;	
+		/*--------------------------------------------------
+		* print_buf(data, frame_length + 8);
+		*--------------------------------------------------*/
+		if (sirf_validate_sentence()){
+			DEBUGF("VALIDATE ERROR '%s'\n", sirf_in_buf);
 		}else{
-			init_parse = 1;	
+			sirf_parse_data();
 		}
-
 	}
-	
-	if (init_parse){
-		data_ptr = data;
-		state = SIRF_WAIT_START1;
-		frame_byte_number = 0;
-	} 
-
-	return returned_value;
 }
+
+void sirf_init(void){
+	sirf_in_buf  = sim18_in_buf;
+	sirf_out_buf = sim18_out_buf;
+
+	/*--------------------------------------------------
+	* sirf_set_trickle_mode();
+	* sirf_set_ptf_mode();
+	*--------------------------------------------------*/
+	sirf_set_msg_41_2s();
+	// sirf_to_nmea(4800);
+
+}
+
 

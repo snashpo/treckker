@@ -101,5 +101,8 @@ int sim18_init(void);
 void sim18_Configuration(void);
 void sim18_read_data(uint8_t read_value);
 void sim18_write_data(uint32_t length);
+//--------------------------------------------------
+// void sim18_timer_istr(void);
+//-------------------------------------------------- 
 #endif
 
