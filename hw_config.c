@@ -522,17 +522,6 @@ void GPIO_Configuration(void)
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 	GPIO_Init(BUZZER_PORT, &GPIO_InitStructure);
 
-	/* LCD */
-	GPIO_SetBits(LCD_CS_PORT, LCD_CS_PIN);  
-	GPIO_InitStructure.GPIO_Pin =  LCD_CS_PIN | LCD_DC_PIN;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_Init(LCD_DC_PORT, &GPIO_InitStructure);
-
-	GPIO_ResetBits(LCD_RESET_PORT, PSU_12V_ENA_PIN | LCD_RESET_PIN);
-	GPIO_InitStructure.GPIO_Pin =  PSU_12V_ENA_PIN | LCD_RESET_PIN;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_Init(LCD_RESET_PORT, &GPIO_InitStructure);
-
 	/* Battery */
 	GPIO_InitStructure.GPIO_Pin = BATTERY_CHARG_PROGRESS_PIN;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
@@ -554,6 +543,17 @@ void GPIO_Configuration(void)
 	GPIO_InitStructure.GPIO_Pin = BATTERY_VOLTAGE_PIN;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
 	GPIO_Init(BATTERY_VOLTAGE_PORT, &GPIO_InitStructure);
+
+	/* LCD */
+	GPIO_SetBits(LCD_CS_PORT, LCD_CS_PIN);  
+	GPIO_InitStructure.GPIO_Pin =  LCD_CS_PIN | LCD_DC_PIN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_Init(LCD_DC_PORT, &GPIO_InitStructure);
+
+	GPIO_ResetBits(LCD_RESET_PORT, PSU_12V_ENA_PIN | LCD_RESET_PIN);
+	GPIO_InitStructure.GPIO_Pin =  PSU_12V_ENA_PIN | LCD_RESET_PIN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_Init(LCD_RESET_PORT, &GPIO_InitStructure);
 
 	/* Spi bus */
 	/* Configure SPI2 pins: 
