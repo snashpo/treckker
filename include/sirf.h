@@ -2,10 +2,10 @@
 #define __SIRF_H__
 
 
-#define SIRF_CHAR_START_1				((char)0xA0)
-#define SIRF_CHAR_START_2				((char)0xA2)
-#define SIRF_CHAR_END_1					((char)0xB0)
-#define SIRF_CHAR_END_2					((char)0xB3)
+#define SIRF_CHAR_START_1				((uint8_t)0xA0)
+#define SIRF_CHAR_START_2				((uint8_t)0xA2)
+#define SIRF_CHAR_END_1					((uint8_t)0xB0)
+#define SIRF_CHAR_END_2					((uint8_t)0xB3)
 
 
 
@@ -47,14 +47,17 @@
 #define SIRF_MSG_41_ADD_MODE_INFO_INDEX					91
 
 extern struct sim18_serial_settings_s sim18_port_config;
-extern struct sim18_data_s mydata;
+extern struct sim18_data_s gps_mydata;
+extern uint8_t sim18_in_buf[];
+extern uint8_t sim18_out_buf[];
+
 
 int sirf_add_crc(uint8_t * data, uint32_t length);
-int sirf_validate_sentence(uint8_t * data);
-int sirf_init( void );
+int sirf_validate_sentence(void);
+void sirf_init( void );
 
-int sirf_get_frame(uint8_t *data);
-int sirf_parse_data(uint8_t *data);
+void sirf_get_frame(uint8_t data);
+int sirf_parse_data(void);
 
 
 
