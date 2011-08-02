@@ -6,9 +6,9 @@
 #define SIM18_NRESET			GPIO_Pin_4
 
 #define SIM18_Port			GPIOC
-#define SIM18_V_ANT			GPIO_Pin_2
+#define SIM18_V_ANT			GPIO_Pin_3
 #define SIM18_ON_OFF			GPIO_Pin_4
-#define SIM18_WAKEUP			GPIO_Pin_3
+#define SIM18_WAKEUP			GPIO_Pin_5
 
 
 extern uint8_t * nmea_in_buf;
