@@ -648,7 +648,7 @@ void TIM_Configuration(void)
 	TIM_InternalClockConfig(TIM4);
 
 	/* Init TIM4 to 500ms period */
-	TIM_TimeBaseInitStruct.TIM_Prescaler = 35999;
+	TIM_TimeBaseInitStruct.TIM_Prescaler = 23999;
 	TIM_TimeBaseInitStruct.TIM_CounterMode = TIM_CounterMode_Down;
 	TIM_TimeBaseInitStruct.TIM_Period = 1000;
 	TIM_TimeBaseInitStruct.TIM_ClockDivision = TIM_CKD_DIV1;
