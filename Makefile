@@ -51,6 +51,7 @@ COBJECTS = printf.o \
 			nmea.o \
 			sirf.o \
 			tools.o \
+			MS5607.o \
 			sht1x.o
 
 			#--------------------------------------------------
