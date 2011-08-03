@@ -52,6 +52,9 @@ COBJECTS = printf.o \
 			sirf.o \
 			tools.o \
 			MS5607.o \
+			sdcard.o \
+			ff.o \
+			diskio.o \
 			sht1x.o
 
 			#--------------------------------------------------
