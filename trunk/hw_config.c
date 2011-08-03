@@ -15,6 +15,7 @@
 #include "battery.h"
 #include "buzzer.h"
 #include "LSM303.h"
+#include "MS5607.h"
 #include "sim18.h"
 
 volatile uint16_t ADC_Value[ADC_DMA_SIZE] = { 
@@ -111,6 +112,8 @@ void Set_System(void)
 	/*--------------------------------------------------
 	* LSM303_Configuration();
 	*--------------------------------------------------*/
+	
+	MS5607_Configuration();
 
 	sim18_Configuration();
 
