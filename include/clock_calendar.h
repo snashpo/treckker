@@ -29,45 +29,10 @@
 
 /* Exported types ------------------------------------------------------------*/
 /* Time Structure definition */
-//--------------------------------------------------
-// struct Time_s
-// {
-//   uint8_t SecLow;
-//   uint8_t SecHigh;
-//   uint8_t MinLow;
-//   uint8_t MinHigh;
-//   uint8_t HourLow;
-//   uint8_t HourHigh;
-// };
-// extern struct Time_s s_TimeStructVar;
-// 
-// /* Alarm Structure definition */
-// struct AlarmTime_s
-// {
-//   uint8_t SecLow;
-//   uint8_t SecHigh;
-//   uint8_t MinLow;
-//   uint8_t MinHigh;
-//   uint8_t HourLow;
-//   uint8_t HourHigh;
-// };
-// extern struct AlarmTime_s s_AlarmStructVar;
-//-------------------------------------------------- 
 
-//--------------------------------------------------
-// /* Alarm Date Structure definition */
-// struct AlarmDate_s
-// {
-//   uint8_t Month;
-//   uint8_t Day;
-//   uint16_t Year;
-//   uint32_t time;
-// };
-//-------------------------------------------------- 
-
-enum dateTime_settings_n{
-	RTC_MODE_SETTINGS_CURRENT,
-	RTC_MODE_SETTINGS_ALARM
+enum time_alarm_mode_n{
+	RTC_TIME,
+	RTC_ALARM
 };
 
 enum alarm_state_n {
@@ -88,16 +53,23 @@ enum alarm_mode_n{
 };
 
 /* Date Structure definition */
-struct Date_s
-{
-  uint8_t Month;
-  uint8_t Day;
+typedef struct {
   uint16_t Year;
-  uint32_t time;
+  uint8_t Month;
+  uint8_t mDay;
+  uint8_t wDay;
+  uint8_t Hour;
+  uint8_t Minute;
+  uint8_t Second;
+  uint8_t leap;
+  uint16_t time_correct;
   enum alarm_mode_n mode;
-};
-extern struct Date_s s_DateStructVar;
-extern struct Date_s s_AlarmDateStructVar;
+} rtc_t;
+
+//--------------------------------------------------
+// extern struct rtc_t s_DateStructVar;
+// extern struct rtc_t s_AlarmDateStructVar;
+//-------------------------------------------------- 
 /* Exported constants --------------------------------------------------------*/
 #define BATTERY_REMOVED 98
 #define BATTERY_RESTORED 99
@@ -106,31 +78,43 @@ extern struct Date_s s_AlarmDateStructVar;
 #define CONFIGURATION_RESET 0x0000
 #define OCTOBER_FLAG_SET 0x4000
 #define MARCH_FLAG_SET 0x8000
-#define DEFAULT_DAY 20
+#define LEAP 1
+#define NOT_LEAP 0
+
+#define DEFAULT_MDAY 20
+#define DEFAULT_WDAY 3
 #define DEFAULT_MONTH 7
 #define DEFAULT_YEAR 2011
 #define DEFAULT_HOURS 19
 #define DEFAULT_MINUTES 0
 #define DEFAULT_SECONDS 0
 #define DEFAULT_TIME_CORRECT_FLAG MARCH_FLAG_SET
-#define LEAP 1
-#define NOT_LEAP 0
 
+#define DEFAULT_ALARM_MDAY 20
+#define DEFAULT_ALARM_WDAY 3
+#define DEFAULT_ALARM_MONTH 7
+#define DEFAULT_ALARM_YEAR 2011
+#define DEFAULT_ALARM_HOURS 19
+#define DEFAULT_ALARM_MINUTES 10
+#define DEFAULT_ALARM_SECONDS 0
+#define DEFAULT_ALARM_MODE			ALARM_MODE_ONCE
 
 
 #define RTC_COUNTER_SET_VALUE		1
 #define RTC_ALARM_SET_VALUE		1
 #define RTC_PERIOD_VALUE			((RTC_COUNTER_SET_VALUE)*(RTC_ALARM_SET_VALUE))
+
 #define READ_BKP_CONFIGURATION()   BKP_ReadBackupRegister(BKP_DR1)
 #define READ_BKP_SUMMERTIME()      BKP_ReadBackupRegister(BKP_DR2)
 #define READ_BKP_CLOCK_YEAR()      BKP_ReadBackupRegister(BKP_DR3)
 #define READ_BKP_CLOCK_MONTH()     BKP_ReadBackupRegister(BKP_DR4)
-#define READ_BKP_CLOCK_DAY()       BKP_ReadBackupRegister(BKP_DR5)
+#define READ_BKP_CLOCK_MDAY()      BKP_ReadBackupRegister(BKP_DR5)
+#define READ_BKP_CLOCK_WDAY()      BKP_ReadBackupRegister(BKP_DR6)
 #define READ_BKP_CLOCK_TIME_HI()   BKP_ReadBackupRegister(BKP_DR8)
 #define READ_BKP_CLOCK_TIME_LO()   BKP_ReadBackupRegister(BKP_DR9)
 #define READ_BKP_ALARM_YEAR()      BKP_ReadBackupRegister(BKP_DR10)
 #define READ_BKP_ALARM_MONTH()     BKP_ReadBackupRegister(BKP_DR11)
-#define READ_BKP_ALARM_DAY()       BKP_ReadBackupRegister(BKP_DR12)
+#define READ_BKP_ALARM_MDAY()      BKP_ReadBackupRegister(BKP_DR12)
 #define READ_BKP_ALARM_TIME_HI()   BKP_ReadBackupRegister(BKP_DR13)
 #define READ_BKP_ALARM_TIME_LO()   BKP_ReadBackupRegister(BKP_DR14)
 #define READ_BKP_ALARM_MODE()		  BKP_ReadBackupRegister(BKP_DR15)
@@ -139,12 +123,13 @@ extern struct Date_s s_AlarmDateStructVar;
 #define WRITE_BKP_SUMMERTIME(x)    BKP_WriteBackupRegister(BKP_DR2, (uint16_t)(x))
 #define WRITE_BKP_CLOCK_YEAR(x)    BKP_WriteBackupRegister(BKP_DR3, (uint16_t)(x))
 #define WRITE_BKP_CLOCK_MONTH(x)   BKP_WriteBackupRegister(BKP_DR4, (uint16_t)(x))
-#define WRITE_BKP_CLOCK_DAY(x)     BKP_WriteBackupRegister(BKP_DR5, (uint16_t)(x))
+#define WRITE_BKP_CLOCK_MDAY(x)    BKP_WriteBackupRegister(BKP_DR5, (uint16_t)(x))
+#define WRITE_BKP_CLOCK_WDAY(x)    BKP_WriteBackupRegister(BKP_DR6, (uint16_t)(x))
 #define WRITE_BKP_CLOCK_TIME_HI(x) BKP_WriteBackupRegister(BKP_DR8, (uint16_t)(x))
 #define WRITE_BKP_CLOCK_TIME_LO(x) BKP_WriteBackupRegister(BKP_DR9, (uint16_t)(x))
 #define WRITE_BKP_ALARM_YEAR(x)    BKP_WriteBackupRegister(BKP_DR10, (uint16_t)(x))
 #define WRITE_BKP_ALARM_MONTH(x)   BKP_WriteBackupRegister(BKP_DR11, (uint16_t)(x))
-#define WRITE_BKP_ALARM_DAY(x)     BKP_WriteBackupRegister(BKP_DR12, (uint16_t)(x))
+#define WRITE_BKP_ALARM_MDAY(x)    BKP_WriteBackupRegister(BKP_DR12, (uint16_t)(x))
 #define WRITE_BKP_ALARM_TIME_HI(x) BKP_WriteBackupRegister(BKP_DR13, (uint16_t)(x))
 #define WRITE_BKP_ALARM_TIME_LO(x) BKP_WriteBackupRegister(BKP_DR14, (uint16_t)(x))
 #define WRITE_BKP_ALARM_MODE(x)	  BKP_WriteBackupRegister(BKP_DR15, (uint16_t)(x))
@@ -174,22 +159,27 @@ extern uint16_t SummerTimeCorrect;
 /* Exported functions ------------------------------------------------------- */
 void rtc_Init(void);
 void RTC_Configuration(void);
-void SetTime(enum dateTime_settings_n, uint8_t,uint8_t,uint8_t);
-void SetDate(enum dateTime_settings_n, uint8_t,uint8_t,uint16_t);
-void alarm_Mgmt(void);
-void DateUpdate(void);
-void TimeUpdate(void);
-uint16_t WeekDay(uint16_t,uint8_t,uint8_t);
-void CalculateTime(void);
-void CheckForDaysElapsed(void);
-void ManualClockCalibration(void);
+
 uint32_t get_sec_counter(void);
 void set_sec_counter(uint32_t now);
-void inc_sec_counter(void);
+uint32_t inc_sec_counter(void);
+
+void set_time(rtc_t *rtc);
+void set_alarm(rtc_t *rtc);
+void get_time(rtc_t * rtc);
+void get_alarm(rtc_t * rtc);
+
+void alarm_Mgmt(void);
 void rtc_print(void);
-void setAlarm(enum alarm_mode_n mode, uint16_t year, uint8_t month, uint8_t day
-		, uint8_t hour, uint8_t min, uint8_t sec);
-uint32_t getDate_Fatfs(void);
+
+//--------------------------------------------------
+// void DateUpdate(void);
+// void TimeUpdate(void);
+// uint16_t WeekDay(uint16_t,uint8_t,uint8_t);
+// void CheckForDaysElapsed(void);
+// void ManualClockCalibration(void);
+// //-------------------------------------------------- 
+
 #endif /* __CLOCK_CALENDAR_H */
 
 /******************* (C) COPYRIGHT 2009 STMicroelectronics *****END OF FILE****/

@@ -40,6 +40,8 @@
 
 /* Private variables--------------------------------------------------------- */
 char * MonthsNames[]={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug", "Sep","Oct","Nov","Dec"};
+char * DaysNames[]={"Sun", "Mon", "Tue", "Wen", "Thu", "Fri", "Sat"};
+
 const uint8_t CalibrationPpm[]={0,1,2,3,4,5,6,7,8,9,10,10,11,12,13,14,15,16,17,
 	18,19,20,21,22,23,24,25,26,27,28,29,30,31,31,32,33,34,
 	35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,51,
@@ -51,8 +53,28 @@ const uint8_t CalibrationPpm[]={0,1,2,3,4,5,6,7,8,9,10,10,11,12,13,14,15,16,17,
 /*Structure variable declaration for system time, system date,
   alarm time, alarm date */
 
-struct Date_s s_DateStructVar;
-struct Date_s s_AlarmDateStructVar;
+rtc_t s_DateStructVar = {
+	.Year = DEFAULT_YEAR,
+	.Month = DEFAULT_MONTH,
+	.mDay = DEFAULT_MDAY,
+	.wDay = DEFAULT_WDAY,
+	.Hour = DEFAULT_HOURS,
+	.Minute = DEFAULT_MINUTES,
+	.Second = DEFAULT_SECONDS,
+	.time_correct = DEFAULT_TIME_CORRECT_FLAG,
+	.leap = NOT_LEAP
+};
+
+rtc_t s_AlarmDateStructVar = {
+	.Year = DEFAULT_ALARM_YEAR,
+	.Month = DEFAULT_ALARM_MONTH,
+	.mDay = DEFAULT_ALARM_MDAY,
+	.wDay = DEFAULT_ALARM_WDAY,
+	.Hour = DEFAULT_ALARM_HOURS,
+	.Minute = DEFAULT_ALARM_MINUTES,
+	.Second = DEFAULT_ALARM_SECONDS,
+	.mode = DEFAULT_ALARM_MODE 
+};
 
 static volatile uint32_t sec_counter = 0;
 static enum alarm_state_n AlarmStatus = RTC_ALARM_WAITING;
@@ -77,8 +99,368 @@ void set_sec_counter(uint32_t now){
 	sec_counter = now;
 }
 
-void inc_sec_counter(void){
-	sec_counter++;
+uint32_t inc_sec_counter(void){
+	return ++sec_counter;
+}
+
+
+/**
+ * @brief Determines the weekday
+ * @param Year,Month and Day
+ * @retval :Returns the CurrentWeekDay Number 0- Sunday 6- Saturday
+ */
+uint16_t WeekDay(uint16_t CurrentYear,uint8_t CurrentMonth,uint8_t CurrentDay)
+{
+	uint16_t Temp1,Temp2,Temp3,Temp4,CurrentWeekDay;
+
+	if(CurrentMonth < 3)
+	{
+		CurrentMonth = CurrentMonth + 12;
+		CurrentYear = CurrentYear - 1;
+	}
+
+	Temp1 = (6 * (CurrentMonth + 1)) / 10;
+	Temp2 = CurrentYear / 4;
+	Temp3 = CurrentYear / 100;
+	Temp4 = CurrentYear / 400;
+	CurrentWeekDay = CurrentDay + (2 * CurrentMonth) + Temp1 
+		+ CurrentYear + Temp2 - Temp3 + Temp4 + 1;
+	CurrentWeekDay = CurrentWeekDay % 7;
+
+	return(CurrentWeekDay);
+}
+/**
+ * @brief  Checks whether the passed year is Leap or not.
+ * @param  None
+ * @retval : 1: leap year
+ *   0: not leap year
+ */
+static uint8_t CheckLeap(uint16_t Year)
+{
+	if((Year % 400) == 0){
+		return LEAP;
+	}else if((Year % 100) == 0){
+		return NOT_LEAP;
+	}else if((Year % 4) == 0){
+		return LEAP;
+	}else	{
+		return NOT_LEAP;
+	}
+}
+
+/**
+ * @brief Updates the Date (This function is called when 1 Day has elapsed
+ * @param None
+ * @retval :None
+ */
+void DateUpdate(void)
+{
+	s_DateStructVar.Month = READ_BKP_CLOCK_MONTH();
+	s_DateStructVar.Year = READ_BKP_CLOCK_YEAR();
+	s_DateStructVar.mDay = READ_BKP_CLOCK_MDAY();
+	s_DateStructVar.wDay = READ_BKP_CLOCK_WDAY();
+
+	if(s_DateStructVar.Month == 1 || s_DateStructVar.Month == 3 || 
+			s_DateStructVar.Month == 5 || s_DateStructVar.Month == 7 ||
+			s_DateStructVar.Month == 8 || s_DateStructVar.Month == 10 
+			|| s_DateStructVar.Month == 12)
+	{
+		if(s_DateStructVar.mDay < 31)
+		{
+			s_DateStructVar.mDay++;
+		}
+		/* Date structure member: s_DateStructVar.Day = 31 */
+		else
+		{
+			if(s_DateStructVar.Month != 12)
+			{
+				s_DateStructVar.Month++;
+				s_DateStructVar.mDay = 1;
+			}
+			/* Date structure member: s_DateStructVar.Day = 31 & s_DateStructVar.Month =12 */
+			else
+			{
+				s_DateStructVar.Month = 1;
+				s_DateStructVar.mDay = 1;
+				s_DateStructVar.Year++;
+			}
+		}
+	}
+	else if(s_DateStructVar.Month == 4 || s_DateStructVar.Month == 6 
+			|| s_DateStructVar.Month == 9 ||s_DateStructVar.Month == 11)
+	{
+		if(s_DateStructVar.mDay < 30)
+		{
+			s_DateStructVar.mDay++;
+		}
+		/* Date structure member: s_DateStructVar.Day = 30 */
+		else
+		{
+			s_DateStructVar.Month++;
+			s_DateStructVar.mDay = 1;
+		}
+	}
+	else if(s_DateStructVar.Month == 2)
+	{
+		if(s_DateStructVar.mDay < 28)
+		{
+			s_DateStructVar.mDay++;
+		}
+		else if(s_DateStructVar.mDay == 28)
+		{
+			/* Leap Year Correction */
+			if(CheckLeap(s_DateStructVar.Year))
+			{
+				s_DateStructVar.mDay++;
+			}
+			else
+			{
+				s_DateStructVar.Month++;
+				s_DateStructVar.mDay = 1;
+			}
+		}
+		else if(s_DateStructVar.mDay == 29)
+		{
+			s_DateStructVar.Month++;
+			s_DateStructVar.mDay = 1;
+		}
+	}
+
+	s_DateStructVar.mDay = WeekDay(s_DateStructVar.Year
+			, s_DateStructVar.Month
+			, s_DateStructVar.mDay);
+
+	WRITE_BKP_CLOCK_YEAR(s_DateStructVar.Year);
+	WRITE_BKP_CLOCK_MONTH(s_DateStructVar.Month);
+	WRITE_BKP_CLOCK_MDAY(s_DateStructVar.mDay);
+	WRITE_BKP_CLOCK_WDAY(s_DateStructVar.wDay);
+}
+
+
+
+void TimeUpdate(void){
+	WRITE_BKP_CLOCK_TIME(get_sec_counter());
+}
+
+
+/**
+ * @brief Chaeks is counter value is more than 86399 and the number of
+ *   elapsed and updates date that many times
+ * @param None
+ * @retval :None
+ */
+void CheckForDaysElapsed(void)
+{
+	uint8_t DaysElapsed;
+
+	if((get_sec_counter() / SECONDS_IN_DAY) != 0)
+	{
+		for(DaysElapsed = 0; DaysElapsed < (get_sec_counter() / SECONDS_IN_DAY)
+				;DaysElapsed++)
+		{
+			DateUpdate();
+		}
+		set_sec_counter(get_sec_counter() % SECONDS_IN_DAY);
+	}
+}
+
+/**
+ * @brief  Summer Time Correction routine
+ * @param  None
+ * @retval : None
+ */
+void SummerTimeCorrection(void)
+{
+	uint8_t CorrectionPending = 0;
+	uint8_t CheckCorrect = 0;
+
+	if((SummerTimeCorrect & OCTOBER_FLAG_SET) != 0)	{
+		if((s_DateStructVar.Month==10) && (s_DateStructVar.mDay >24 ))	{
+			for(CheckCorrect = 25; CheckCorrect <=s_DateStructVar.mDay; CheckCorrect++){
+				if(WeekDay(s_DateStructVar.Year, s_DateStructVar.Month, CheckCorrect )==0)	{
+					if(CheckCorrect == s_DateStructVar.mDay){
+						/* Check if Time is greater than equal to 1:59:59 */
+						if(get_sec_counter() >= 7199){
+							CorrectionPending = 1;
+						}
+					}else{
+						CorrectionPending = 1;
+					}
+					break;
+				}
+			}
+		}else if((s_DateStructVar.Month > 10))	{
+			CorrectionPending = 1;
+		}else if(s_DateStructVar.Month < 3)	{
+			CorrectionPending = 1;
+		}else if(s_DateStructVar.Month == 3){
+			if(s_DateStructVar.mDay < 24)	{
+				CorrectionPending = 1;
+			}else{
+				for(CheckCorrect = 24; CheckCorrect <= s_DateStructVar.mDay;CheckCorrect++){
+					if(WeekDay(s_DateStructVar.Year, s_DateStructVar.Month, CheckCorrect) == 0){
+						if(CheckCorrect == s_DateStructVar.mDay){
+							/*Check if Time is less than 1:59:59 and year is not the same in which
+							  March correction was done */
+							if((get_sec_counter() < 7199) && ((SummerTimeCorrect & 0x3FFF) != s_DateStructVar.Year)){
+								CorrectionPending = 1;
+							}else{
+								CorrectionPending = 0;
+							}
+							break;
+						}else{
+							CorrectionPending = 1;
+						}
+					}
+				}
+			}
+		}
+	}else if((SummerTimeCorrect & MARCH_FLAG_SET) != 0){
+		if((s_DateStructVar.Month == 3) && (s_DateStructVar.mDay > 24 ))	{
+			for(CheckCorrect = 25; CheckCorrect <= s_DateStructVar.mDay; CheckCorrect++){
+				if(WeekDay(s_DateStructVar.Year, s_DateStructVar.Month, CheckCorrect ) == 0){
+					if(CheckCorrect == s_DateStructVar.mDay){
+						/*Check if time is greater than equal to 1:59:59 */
+						if(get_sec_counter() >= 7199){
+							CorrectionPending = 1;
+						}
+					}else{
+						CorrectionPending = 1;
+					}
+					break;
+				}
+			}
+		}else if((s_DateStructVar.Month > 3) && (s_DateStructVar.Month < 10 )){
+			CorrectionPending=1;
+		}else if(s_DateStructVar.Month == 10){
+			if(s_DateStructVar.mDay < 24){
+				CorrectionPending = 1;
+			}else	{
+				for(CheckCorrect=24; CheckCorrect <= s_DateStructVar.mDay; CheckCorrect++){
+					if(WeekDay(s_DateStructVar.Year, s_DateStructVar.Month, CheckCorrect) == 0){
+						if(CheckCorrect == s_DateStructVar.mDay){
+							/*Check if Time is less than 1:59:59 and year is not the same in
+							  which March correction was done */
+							if((get_sec_counter() < 7199) && ((SummerTimeCorrect & 0x3FFF) != s_DateStructVar.Year)){
+								CorrectionPending = 1;
+							}else{
+								CorrectionPending = 0;
+							}
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+	if(CorrectionPending == 1)	{
+
+		if((SummerTimeCorrect & OCTOBER_FLAG_SET) != 0)	{
+			/* Subtract 1 hour from the current time */
+			set_sec_counter( get_sec_counter() - 3599);
+			/* Reset October correction flag */
+			SummerTimeCorrect &= 0xBFFF;
+			/* Set March correction flag  */
+			SummerTimeCorrect |= MARCH_FLAG_SET;
+			SummerTimeCorrect |= s_DateStructVar.Year;
+			WRITE_BKP_SUMMERTIME( SummerTimeCorrect );
+
+		}else if((SummerTimeCorrect & MARCH_FLAG_SET)!=0){
+			/* Add 1 hour to current time */
+			set_sec_counter( get_sec_counter() + 3601);
+			/* Reset March correction flag */
+			SummerTimeCorrect &= 0x7FFF;
+			/* Set October correction flag  */
+			SummerTimeCorrect |= OCTOBER_FLAG_SET;
+			SummerTimeCorrect |= s_DateStructVar.Year;
+			WRITE_BKP_SUMMERTIME( SummerTimeCorrect );
+		}
+	}
+}
+
+/**
+ * @brief  Sets the RTC Date(DD/MM/YYYY)
+ * @param DD,MM,YYYY
+ * @retval : None
+ */
+void set_time(rtc_t *time)
+{
+	/*Check if the date entered by the user is correct or not, Displays an error
+	  message if date is incorrect  */
+	if((( time->Month == 4 || time->Month == 6 || time->Month == 9 || time->Month == 11) && time->mDay == 31) 
+			|| (time->Month == 2 && (time->mDay > 29))
+			|| (time->Month == 2 && time->mDay == 29 && (CheckLeap(time->Year)==0)))
+	{
+		DEBUGF("INCORRECT DATE...\n");
+
+	} else {
+			s_DateStructVar.Year = time->Year;
+			s_DateStructVar.Month = time->Month;
+			s_DateStructVar.mDay = time->mDay;
+			s_DateStructVar.wDay = 
+				WeekDay(time->Year, time->Month, time->mDay);
+			s_DateStructVar.Hour = time->Hour;
+			s_DateStructVar.Minute = time->Minute;
+			s_DateStructVar.Second = time->Second;
+			WRITE_BKP_CLOCK_YEAR(time->Year);
+			WRITE_BKP_CLOCK_MONTH(time->Month);
+			WRITE_BKP_CLOCK_MDAY(time->mDay);
+			WRITE_BKP_CLOCK_WDAY(s_DateStructVar.wDay);
+			WRITE_BKP_CLOCK_TIME(
+					(time->Hour * 60 + time->Minute) * 60 + time->Second); 
+			SummerTimeCorrection();
+		}
+}
+
+void get_time(rtc_t * rtc){
+	uint32_t now = get_sec_counter();
+
+	rtc->Year = s_DateStructVar.Year;
+	rtc->Month = s_DateStructVar.Month;
+	rtc->mDay = s_DateStructVar.mDay;
+	rtc->wDay = s_DateStructVar.wDay;
+	rtc->Hour = now / 3600;
+	rtc->Minute = (now % 3600) / 60;
+	rtc->Minute = (now % 3600) % 60;
+}
+
+
+void set_alarm(rtc_t *alarm){
+	/*Check if the date entered by the user is correct or not, Displays an error
+	  message if date is incorrect  */
+	if((( alarm->Month == 4 || alarm->Month == 6 || alarm->Month == 9 || alarm->Month == 11) 
+				&&  alarm->mDay == 31) 
+			|| (alarm->Month == 2 && ( alarm->mDay > 29))
+			|| (alarm->Month == 2 &&  alarm->mDay == 29 && (CheckLeap(alarm->Year)==0)))
+	{
+		DEBUGF("INCORRECT DATE...\n");
+
+	} else {
+
+		s_AlarmDateStructVar.Year = alarm->Year;
+		s_AlarmDateStructVar.Month = alarm->Month;
+		s_AlarmDateStructVar.mDay = alarm->mDay;	
+		s_AlarmDateStructVar.Hour = alarm->Hour;	
+		s_AlarmDateStructVar.Minute = alarm->Minute;
+		s_AlarmDateStructVar.mode = alarm->mode;
+
+		WRITE_BKP_ALARM_YEAR(alarm->Year);
+		WRITE_BKP_ALARM_MONTH(alarm->Month);
+		WRITE_BKP_ALARM_MDAY(alarm->mDay);
+		WRITE_BKP_ALARM_TIME((alarm->Hour * 60 + alarm->Minute) * 60 );
+		WRITE_BKP_ALARM_MODE(alarm->mode);
+	}
+}
+
+void get_alarm(rtc_t * rtc){
+
+	rtc->Year = s_AlarmDateStructVar.Year;
+	rtc->Month = s_AlarmDateStructVar.Month;
+	rtc->mDay = s_AlarmDateStructVar.mDay;
+	rtc->wDay = s_AlarmDateStructVar.wDay;
+	rtc->Hour = s_AlarmDateStructVar.Hour;
+	rtc->Minute = s_AlarmDateStructVar.Minute;
+	rtc->mode = s_AlarmDateStructVar.mode;
 }
 
 /**
@@ -104,10 +486,8 @@ void RTC_Configuration()
 		/* Backup Domain Reset */
 		BKP_DeInit();
 
-		SetDate(RTC_MODE_SETTINGS_CURRENT, DEFAULT_DAY, DEFAULT_MONTH, DEFAULT_YEAR);	 
-
-		/* Set default system time to 09 : 24 : 00 */
-		SetTime(RTC_MODE_SETTINGS_CURRENT, DEFAULT_HOURS,DEFAULT_MINUTES,DEFAULT_SECONDS);
+		set_time(&s_DateStructVar);	 
+		set_alarm(&s_AlarmDateStructVar);
 
 		//EE_Format();
 
@@ -153,218 +533,9 @@ void RTC_Configuration()
 	/* Check if how many days are elapsed in power down/Low Power Mode-
 		Updates Date that many Times*/
 	CheckForDaysElapsed();
-	
-	SummerTimeCorrect = READ_BKP_SUMMERTIME();
-	s_DateStructVar.Month = READ_BKP_CLOCK_MONTH();
-	s_DateStructVar.Day = READ_BKP_CLOCK_DAY();
-	s_DateStructVar.Year = READ_BKP_CLOCK_YEAR();
-	set_sec_counter( READ_BKP_CLOCK_TIME() );
-	
-	s_AlarmDateStructVar.Month = READ_BKP_ALARM_MONTH();
-	s_AlarmDateStructVar.Day = READ_BKP_ALARM_DAY();
-	s_AlarmDateStructVar.Year = READ_BKP_ALARM_YEAR();
-	s_AlarmDateStructVar.time = READ_BKP_ALARM_TIME();
-	s_AlarmDateStructVar.mode = READ_BKP_ALARM_MODE();
-
-}
-
-/**
- * @brief  Checks whether the passed year is Leap or not.
- * @param  None
- * @retval : 1: leap year
- *   0: not leap year
- */
-static uint8_t CheckLeap(uint16_t Year)
-{
-	if((Year % 400) == 0)
-	{
-		return LEAP;
-	}
-	else if((Year % 100) == 0)
-	{
-		return NOT_LEAP;
-	}
-	else if((Year % 4) == 0)
-	{
-		return LEAP;
-	}
-	else
-	{
-		return NOT_LEAP;
-	}
 }
 
 
-
-/**
- * @brief  Summer Time Correction routine
- * @param  None
- * @retval : None
- */
-void SummerTimeCorrection(void)
-{
-	uint8_t CorrectionPending = 0;
-	uint8_t CheckCorrect = 0;
-
-	if((SummerTimeCorrect & OCTOBER_FLAG_SET) != 0)
-	{
-		if((s_DateStructVar.Month==10) && (s_DateStructVar.Day >24 ))
-		{
-			for(CheckCorrect = 25; CheckCorrect <=s_DateStructVar.Day; CheckCorrect++)
-			{
-				if(WeekDay(s_DateStructVar.Year, s_DateStructVar.Month, CheckCorrect )==0)
-				{
-					if(CheckCorrect == s_DateStructVar.Day)
-					{
-						/* Check if Time is greater than equal to 1:59:59 */
-						if(get_sec_counter() >= 7199)
-						{
-							CorrectionPending = 1;
-						}
-					}
-					else
-					{
-						CorrectionPending = 1;
-					}
-					break;
-				}
-			}
-		}
-		else if((s_DateStructVar.Month > 10))
-		{
-			CorrectionPending = 1;
-		}
-		else if(s_DateStructVar.Month < 3)
-		{
-			CorrectionPending = 1;
-		}
-		else if(s_DateStructVar.Month == 3)
-		{
-			if(s_DateStructVar.Day < 24)
-			{
-				CorrectionPending = 1;
-			}
-			else
-			{
-				for(CheckCorrect = 24; CheckCorrect <= s_DateStructVar.Day;CheckCorrect++)
-				{
-					if(WeekDay(s_DateStructVar.Year, s_DateStructVar.Month, CheckCorrect) == 0)
-					{
-						if(CheckCorrect == s_DateStructVar.Day)
-						{
-							/*Check if Time is less than 1:59:59 and year is not the same in which
-							  March correction was done */
-							if((get_sec_counter() < 7199) && ((SummerTimeCorrect & 0x3FFF) != 
-										s_DateStructVar.Year))
-							{
-								CorrectionPending = 1;
-							}
-							else
-							{
-								CorrectionPending = 0;
-							}
-							break;
-						}
-						else
-						{
-							CorrectionPending = 1;
-						}
-					}
-				}
-			}
-		}
-	}
-	else if((SummerTimeCorrect & MARCH_FLAG_SET) != 0)
-	{
-		if((s_DateStructVar.Month == 3) && (s_DateStructVar.Day > 24 ))
-		{
-			for(CheckCorrect = 25; CheckCorrect <= s_DateStructVar.Day;
-					CheckCorrect++)
-			{
-				if(WeekDay(s_DateStructVar.Year, s_DateStructVar.Month,
-							CheckCorrect ) == 0)
-				{
-					if(CheckCorrect == s_DateStructVar.Day)
-					{
-						/*Check if time is greater than equal to 1:59:59 */
-						if(get_sec_counter() >= 7199)
-						{
-							CorrectionPending = 1;
-						}
-					}
-					else
-					{
-						CorrectionPending = 1;
-					}
-					break;
-				}
-			}
-		}
-		else if((s_DateStructVar.Month > 3) && (s_DateStructVar.Month < 10 ))
-		{
-			CorrectionPending=1;
-		}
-		else if(s_DateStructVar.Month == 10)
-		{
-			if(s_DateStructVar.Day < 24)
-			{
-				CorrectionPending = 1;
-			}
-			else
-			{
-				for(CheckCorrect=24; CheckCorrect <= s_DateStructVar.Day;
-						CheckCorrect++)
-				{
-					if(WeekDay(s_DateStructVar.Year, s_DateStructVar.Month,
-								CheckCorrect) == 0)
-					{
-						if(CheckCorrect == s_DateStructVar.Day)
-						{
-							/*Check if Time is less than 1:59:59 and year is not the same in
-							  which March correction was done */
-							if((get_sec_counter() < 7199) && 
-									((SummerTimeCorrect & 0x3FFF) != s_DateStructVar.Year))
-							{
-								CorrectionPending = 1;
-							}
-							else
-							{
-								CorrectionPending = 0;
-							}
-							break;
-						}
-					}
-				}
-			}
-		}
-	}
-
-	if(CorrectionPending == 1)
-	{
-		if((SummerTimeCorrect & OCTOBER_FLAG_SET) != 0)
-		{
-			/* Subtract 1 hour from the current time */
-			set_sec_counter( get_sec_counter() - 3599);
-			/* Reset October correction flag */
-			SummerTimeCorrect &= 0xBFFF;
-			/* Set March correction flag  */
-			SummerTimeCorrect |= MARCH_FLAG_SET;
-			SummerTimeCorrect |= s_DateStructVar.Year;
-			WRITE_BKP_SUMMERTIME( SummerTimeCorrect );
-		}
-		else if((SummerTimeCorrect & MARCH_FLAG_SET)!=0)
-		{
-			/* Add 1 hour to current time */
-			set_sec_counter( get_sec_counter() + 3601);
-			/* Reset March correction flag */
-			SummerTimeCorrect &= 0x7FFF;
-			/* Set October correction flag  */
-			SummerTimeCorrect |= OCTOBER_FLAG_SET;
-			SummerTimeCorrect |= s_DateStructVar.Year;
-			WRITE_BKP_SUMMERTIME( SummerTimeCorrect );
-		}
-	}
-}
 
 
 void rtc_print(void)
@@ -372,7 +543,7 @@ void rtc_print(void)
 
 	DEBUGF("Date %04d/%02d/%02d time %02d:%02d:%02d\n", READ_BKP_CLOCK_YEAR()
 			, READ_BKP_CLOCK_MONTH()
-			, READ_BKP_CLOCK_DAY()
+			, READ_BKP_CLOCK_MDAY()
 			, get_sec_counter() / 3600
 			, (get_sec_counter() % 3600) / 60
 			, (get_sec_counter() % 3600) % 60);
@@ -387,105 +558,9 @@ void rtc_Init(void)
 {
 	AlarmStatus = RTC_ALARM_WAITING;
 
-	setAlarm(ALARM_MODE_ONCE, 2011, 7, 20, 19, 29, 0);
-
-}
-
-/**
- * @brief  Sets the RTC Current Counter Value
- * @param Hour, Minute and Seconds data
- * @retval : None
- */
-void SetTime(enum dateTime_settings_n alarm, uint8_t Hour
-		,uint8_t Minute
-		,uint8_t Seconds)
-{
-	uint32_t CounterValue;
-
-	if ((Hour > 23) || (Minute > 59) || (Seconds > 59)){
-		DEBUGF("INCORRECT TIME...\n");
-
-	}else {
-
-		CounterValue = ((Hour * 60) + Minute) * 60 + Seconds;
-
-		if(! alarm){
-			set_sec_counter(CounterValue);
-			WRITE_BKP_CLOCK_TIME(CounterValue);
-
-		}else {
-			WRITE_BKP_ALARM_TIME(CounterValue);
-			s_AlarmDateStructVar.time = CounterValue;
-		}
-	}
-}
-
-/**
- * @brief  Sets the RTC Date(DD/MM/YYYY)
- * @param DD,MM,YYYY
- * @retval : None
- */
-void SetDate(enum dateTime_settings_n alarm, uint8_t Day, uint8_t Month, uint16_t Year)
-{
-	/*Check if the date entered by the user is correct or not, Displays an error
-	  message if date is incorrect  */
-	if((( Month == 4 || Month == 6 || Month == 9 || Month == 11) && Day == 31) 
-			|| (Month == 2 && (Day > 29))
-			|| (Month == 2 && Day == 29 && (CheckLeap(Year)==0)))
-	{
-		DEBUGF("INCORRECT DATE...\n");
-
-	} else {
-		if(!alarm)
-		{
-			s_DateStructVar.Year = Year;
-			s_DateStructVar.Month = Month;
-			s_DateStructVar.Day = Day;
-			WRITE_BKP_CLOCK_MONTH(Month);
-			WRITE_BKP_CLOCK_DAY(Day);
-			WRITE_BKP_CLOCK_YEAR(Year);
-			SummerTimeCorrection();
-
-		} else {
-
-			s_AlarmDateStructVar.Year = Year;
-			s_AlarmDateStructVar.Month = Month;
-			s_AlarmDateStructVar.Day = Day;
-			WRITE_BKP_ALARM_MONTH(Month);
-			WRITE_BKP_ALARM_DAY(Day);
-			WRITE_BKP_ALARM_YEAR(Year);
-
-		}
-	}
-
-}
-
-uint32_t getDate_Fatfs(void){
-
-	uint32_t now = get_sec_counter();
-
-	uint32_t res =  (((uint32_t)s_DateStructVar.Year - 1980) << 25)
-		| ((uint32_t)s_DateStructVar.Month << 21)
-		| ((uint32_t)s_DateStructVar.Day << 16)
-		| (uint16_t)((now % 3600) << 11)
-		| (uint16_t)(((now % 3600) / 60) << 5)
-		| (uint16_t)(((now % 3600) % 60) >> 1);
-
-	return res;
 }
 
 
-void setAlarm(enum alarm_mode_n mode
-		, uint16_t year, uint8_t month, uint8_t day
-		, uint8_t hour, uint8_t min, uint8_t sec){
-
-	SetDate(RTC_MODE_SETTINGS_ALARM, day, month, year);
-	SetTime(RTC_MODE_SETTINGS_ALARM, hour, min, sec);
-
-	WRITE_BKP_ALARM_MODE(mode);
-	s_AlarmDateStructVar.mode = mode;
-
-}
 
 /**
  * @brief  This function handles RTCAlarm_IRQHandler .
@@ -498,9 +573,10 @@ void check_alarm(void)
 		case ALARM_MODE_ONCE:
 			if( (s_DateStructVar.Year == s_AlarmDateStructVar.Year) 
 					&& (s_DateStructVar.Month ==  s_AlarmDateStructVar.Month) 
-					&& (s_DateStructVar.Day == s_AlarmDateStructVar.Day)
-					&&	(s_AlarmDateStructVar.time <= get_sec_counter())
-					&&	(s_AlarmDateStructVar.time >= get_sec_counter() + 300) ){
+					&& (s_DateStructVar.mDay == s_AlarmDateStructVar.mDay)
+					&&	(s_AlarmDateStructVar.Hour <= (get_sec_counter() % 3600))
+					&&	(s_AlarmDateStructVar.Minute >= (get_sec_counter() / 60))
+					&&	(s_AlarmDateStructVar.Minute >= ((get_sec_counter() / 60) + 300))  ){
 				AlarmStatus |= RTC_ALARM_STARTED;
 			}
 			break;
@@ -580,169 +656,6 @@ void alarm_Mgmt(void)
  * }
  *--------------------------------------------------*/
 
-
-
-/**
- * @brief Updates the Date (This function is called when 1 Day has elapsed
- * @param None
- * @retval :None
- */
-void DateUpdate(void)
-{
-	s_DateStructVar.Month = READ_BKP_CLOCK_MONTH();
-	s_DateStructVar.Year = READ_BKP_CLOCK_YEAR();
-	s_DateStructVar.Day = READ_BKP_CLOCK_DAY();
-
-	if(s_DateStructVar.Month == 1 || s_DateStructVar.Month == 3 || 
-			s_DateStructVar.Month == 5 || s_DateStructVar.Month == 7 ||
-			s_DateStructVar.Month == 8 || s_DateStructVar.Month == 10 
-			|| s_DateStructVar.Month == 12)
-	{
-		if(s_DateStructVar.Day < 31)
-		{
-			s_DateStructVar.Day++;
-		}
-		/* Date structure member: s_DateStructVar.Day = 31 */
-		else
-		{
-			if(s_DateStructVar.Month != 12)
-			{
-				s_DateStructVar.Month++;
-				s_DateStructVar.Day = 1;
-			}
-			/* Date structure member: s_DateStructVar.Day = 31 & s_DateStructVar.Month =12 */
-			else
-			{
-				s_DateStructVar.Month = 1;
-				s_DateStructVar.Day = 1;
-				s_DateStructVar.Year++;
-			}
-		}
-	}
-	else if(s_DateStructVar.Month == 4 || s_DateStructVar.Month == 6 
-			|| s_DateStructVar.Month == 9 ||s_DateStructVar.Month == 11)
-	{
-		if(s_DateStructVar.Day < 30)
-		{
-			s_DateStructVar.Day++;
-		}
-		/* Date structure member: s_DateStructVar.Day = 30 */
-		else
-		{
-			s_DateStructVar.Month++;
-			s_DateStructVar.Day = 1;
-		}
-	}
-	else if(s_DateStructVar.Month == 2)
-	{
-		if(s_DateStructVar.Day < 28)
-		{
-			s_DateStructVar.Day++;
-		}
-		else if(s_DateStructVar.Day == 28)
-		{
-			/* Leap Year Correction */
-			if(CheckLeap(s_DateStructVar.Year))
-			{
-				s_DateStructVar.Day++;
-			}
-			else
-			{
-				s_DateStructVar.Month++;
-				s_DateStructVar.Day = 1;
-			}
-		}
-		else if(s_DateStructVar.Day == 29)
-		{
-			s_DateStructVar.Month++;
-			s_DateStructVar.Day = 1;
-		}
-	}
-
-	WRITE_BKP_CLOCK_MONTH(s_DateStructVar.Month);
-	WRITE_BKP_CLOCK_DAY(s_DateStructVar.Day);
-	WRITE_BKP_CLOCK_YEAR(s_DateStructVar.Year);
-}
-
-
-void TimeUpdate(void){
-	WRITE_BKP_CLOCK_TIME(get_sec_counter());
-}
-
-/**
- * @brief Determines the weekday
- * @param Year,Month and Day
- * @retval :Returns the CurrentWeekDay Number 0- Sunday 6- Saturday
- */
-uint16_t WeekDay(uint16_t CurrentYear,uint8_t CurrentMonth,uint8_t CurrentDay)
-{
-	uint16_t Temp1,Temp2,Temp3,Temp4,CurrentWeekDay;
-
-	if(CurrentMonth < 3)
-	{
-		CurrentMonth = CurrentMonth + 12;
-		CurrentYear = CurrentYear - 1;
-	}
-
-	Temp1 = (6 * (CurrentMonth + 1)) / 10;
-	Temp2 = CurrentYear / 4;
-	Temp3 = CurrentYear / 100;
-	Temp4 = CurrentYear / 400;
-	CurrentWeekDay = CurrentDay + (2 * CurrentMonth) + Temp1 
-		+ CurrentYear + Temp2 - Temp3 + Temp4 + 1;
-	CurrentWeekDay = CurrentWeekDay % 7;
-
-	return(CurrentWeekDay);
-}
-
-
-
-/*--------------------------------------------------
-* 
-* / **
-*  * @brief Calcuate the Time (in hours, minutes and seconds  derived from
-*  *   COunter value
-*  * @param None
-*  * @retval :None
-*  * /
-* void CalculateTime(void)
-* {
-* 	uint32_t TimeVar;
-* 
-* 	TimeVar = get_sec_counter();
-* 	TimeVar %= (SECONDS_IN_DAY + 1);
-* 	    s_TimeStructVar.HourHigh = (uint8_t)(TimeVar / 3600) / 10;
-* 	    s_TimeStructVar.HourLow = (uint8_t)(TimeVar / 3600) % 10;
-* 	    s_TimeStructVar.MinHigh = (uint8_t)((TimeVar % 3600) / 60) / 10;
-* 	    s_TimeStructVar.MinLow = (uint8_t)((TimeVar % 3600) / 60) % 10;
-* 	    s_TimeStructVar.SecHigh = (uint8_t)((TimeVar % 3600) % 60) / 10;
-* 	    s_TimeStructVar.SecLow = (uint8_t)((TimeVar % 3600) % 60) % 10;
-* }
-* 
-* 
-*--------------------------------------------------*/
-
-/**
- * @brief Chaeks is counter value is more than 86399 and the number of
- *   elapsed and updates date that many times
- * @param None
- * @retval :None
- */
-void CheckForDaysElapsed(void)
-{
-	uint8_t DaysElapsed;
-
-	if((get_sec_counter() / SECONDS_IN_DAY) != 0)
-	{
-		for(DaysElapsed = 0; DaysElapsed < (get_sec_counter() / SECONDS_IN_DAY)
-				;DaysElapsed++)
-		{
-			DateUpdate();
-		}
-
-		set_sec_counter(get_sec_counter() % SECONDS_IN_DAY);
-	}
-}
 
 
 

@@ -4,7 +4,9 @@
 /*  partly based on code from STMircoelectronics, Peter Dannegger, "LaLaDumm" */
 /*--------------------------------------------------------------------------  */
 
-#include <stdint.h>
+/*--------------------------------------------------
+* #include <stdint.h>
+*--------------------------------------------------*/
 #include "stm32f10x.h"
 #include "stm32f10x_rtc.h"
 #include "stm32f10x_bkp.h"
