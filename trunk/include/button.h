@@ -4,7 +4,7 @@
 
 enum button_state_n{
 	BUTTON_RELEASED,
-	BUTTON_PRESSED,
+	BUTTON_PRESSED
 };
 extern enum button_state_n button_state;
 void Button_Mgmt();

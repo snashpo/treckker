@@ -123,6 +123,12 @@ char * strchr(const uint8_t *s1, const uint8_t c){
 	return NULL;
 }
 
+uint32_t strlen(const uint8_t *s1){
+	uint32_t res;
+	while(*(s1 + res++));
+	return res;
+}
+
 /*--------------------------------------------------
 * void print_date(void)
 * {

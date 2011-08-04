@@ -6,6 +6,7 @@
 #include "stm32f10x_i2c.h"
 
 #include "hw_config.h"
+#include "clock_calendar.h"
 #include "platform_config.h"
 #include "fifo.h"
 #include "timer.h"
@@ -750,7 +751,7 @@ void ADC_Configuration(void)
 
 }
 
-uint16_t vbat_value()
+uint16_t vbat_value(void)
 {
 	int32_t value;
 
@@ -764,7 +765,7 @@ uint16_t vbat_value()
 	return (int16_t) value;
 }
 
-uint16_t vpsu_value()
+uint16_t vpsu_value(void)
 {
 	if (GPIO_ReadInputDataBit(BATTERY_POWER_GOOD_PORT, 
 				BATTERY_POWER_GOOD_PIN) == RESET) {
@@ -774,7 +775,7 @@ uint16_t vpsu_value()
 	return PSU_NO_VOLTAGE; 
 }
 
-uint16_t vdda_value()
+uint16_t vdda_value(void)
 {
 	int32_t value;
 
@@ -788,7 +789,7 @@ uint16_t vdda_value()
 }
 
 #define TEMP_AVG_SLOPE        4300  /* uV/C */
-int16_t temp_value()
+int16_t temp_value(void)
 {
 	int32_t value; 
 	uint32_t ref_value;

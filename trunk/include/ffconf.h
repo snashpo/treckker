@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------/
-/  FatFs - FAT file system module configuration file  R0.08.dev2  (C)ChaN, 2010
+/  FatFs - FAT file system module configuration file  R0.07e  (C)ChaN, 2009
 /----------------------------------------------------------------------------/
 /
 / CAUTION! Do not forget to make clean the project after any changes to
@@ -7,7 +7,7 @@
 /
 /----------------------------------------------------------------------------*/
 #ifndef _FFCONFIG
-#define _FFCONFIG 0x07F8
+#define _FFCONFIG 0x007E
 
 
 /*---------------------------------------------------------------------------/
@@ -36,11 +36,11 @@
 /   3: f_lseek is removed in addition to level 2. */
 
 
-#define	_USE_STRFUNC	1	/* 0, 1 or 2 */
+#define	_USE_STRFUNC	2	/* 0, 1 or 2 */
 /* To enable string functions, set _USE_STRFUNC to 1 or 2. */
 
 
-#define	_USE_MKFS	0		/* 0 or 1 */
+#define	_USE_MKFS	1		/* 0 or 1 */
 /* To enable f_mkfs function, set _USE_MKFS to 1 and set _FS_READONLY to 0 */
 
 
@@ -48,16 +48,12 @@
 /* To enable f_forward function, set _USE_FORWARD to 1 and set _FS_TINY to 1. */
 
 
-#define	_USE_FASTSEEK	0	/* 0 or 1 */
-/* To enable f_fastseek function, set _USE_FASTSEEK to 1. */
-
-
 
 /*---------------------------------------------------------------------------/
 / Locale and Namespace Configurations
 /----------------------------------------------------------------------------*/
 
-#define _CODE_PAGE	1250
+#define _CODE_PAGE	1252
 /* The _CODE_PAGE specifies the OEM code page to be used on the target system.
 /  Incorrect setting of the code page can cause a file open failure.
 /
@@ -90,19 +86,17 @@
 */
 
 
-#define	_USE_LFN	1		/* 0 to 3 */
+#define	_USE_LFN	1		/* 0, 1 or 2 */
 #define	_MAX_LFN	255		/* Maximum LFN length to handle (12 to 255) */
 /* The _USE_LFN option switches the LFN support.
 /
 /   0: Disable LFN. _MAX_LFN and _LFN_UNICODE have no effect.
 /   1: Enable LFN with static working buffer on the bss. NOT REENTRANT.
 /   2: Enable LFN with dynamic working buffer on the STACK.
-/   3: Enable LFN with dynamic working buffer on the HEAP.
 /
 /  The LFN working buffer occupies (_MAX_LFN + 1) * 2 bytes. When enable LFN,
-/  Unicode handling functions ff_convert() and ff_wtoupper() must be added
-/  to the project. When enable to use heap, memory control functions
-/  ff_memalloc() and ff_memfree() must be added to the project. */
+/  two Unicode handling functions ff_convert() and ff_wtoupper() must be added
+/  to the project. */
 
 
 #define	_LFN_UNICODE	0	/* 0 or 1 */
@@ -111,10 +105,10 @@
 */
 
 
-#define _FS_RPATH	1		/* 0 or 1 */
+#define _FS_RPATH	0		/* 0 or 1 */
 /* When _FS_RPATH is set to 1, relative path feature is enabled and f_chdir,
 /  f_chdrive function are available.
-/  Note that output of the f_readdir fnction is affected by this option. */
+/  Note that output of the f_readdir function is affected by this option. */
 
 
 
@@ -126,17 +120,17 @@
 /* Number of volumes (logical drives) to be used. */
 
 
-#define	_MAX_SS		512			/* 512, 1024, 2048 or 4096 */
+#define	_MAX_SS		512		/* 512, 1024, 2048 or 4096 */
 /* Maximum sector size to be handled.
 /  Always set 512 for memory card and hard disk but a larger value may be
 /  required for floppy disk (512/1024) and optical disk (512/2048).
-/  When _MAX_SS is larger than 512, GET_SECTOR_SIZE command must be implememted
+/  When _MAX_SS is larger than 512, GET_SECTOR_SIZE command must be implemented
 /  to the disk_ioctl function. */
 
 
 #define	_MULTI_PARTITION	0	/* 0 or 1 */
 /* When _MULTI_PARTITION is set to 0, each volume is bound to the same physical
-/ drive number and can mount only first primaly partition. When it is set to 1,
+/ drive number and can mount only first primary partition. When it is set to 1,
 / each volume is tied to the partitions listed in Drives[]. */
 
 
@@ -146,14 +140,14 @@
 /----------------------------------------------------------------------------*/
 
 #define _WORD_ACCESS	0	/* 0 or 1 */
-/* Set 0 first and it is always compatible with all platforms. The _WORD_ACCESS
-/  option defines which access method is used to the word data on the FAT volume.
+/* The _WORD_ACCESS option defines which access method is used to the word
+/  data on the FAT volume.
 /
-/   0: Byte-by-byte access.
+/   0: Byte-by-byte access. Always compatible with all platforms.
 /   1: Word access. Do not choose this unless following condition is met.
 /
-/  When the byte order on the memory is big-endian or address miss-aligned word
-/  access results incorrect behavior, the _WORD_ACCESS must be set to 0.
+/  When the byte order on the memory is big-endian or address miss-aligned
+/  word access results incorrect behavior, the _WORD_ACCESS must be set to 0.
 /  If it is not the case, the value can also be set to 1 to improve the
 /  performance and code size. */
 
@@ -167,13 +161,6 @@
 /   1: Enable reentrancy. Also user provided synchronization handlers,
 /      ff_req_grant, ff_rel_grant, ff_del_syncobj and ff_cre_syncobj
 /      function must be added to the project. */
-
-
-#define	_FS_SHARE	0	/* 0 or >=1 */
-/* To enable file shareing feature, set _FS_SHARE to >= 1 and also user
-   provided memory handlers, ff_memalloc and ff_memfree function must be
-   added to the project. The value defines number of files can be opened
-   per volume. */
 
 
 #endif /* _FFCONFIG */

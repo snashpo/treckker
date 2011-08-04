@@ -8,6 +8,7 @@
 #include "sirf.h"
 #include "tools.h"
 #include "timer.h"
+#include "hw_config.h"
 
 
 #ifdef DEBUG
@@ -18,7 +19,6 @@
 
 
 /**************** sim18_variables ********************/
-static tick_t start_timestamp;
 
 struct sim18_serial_settings_s sim18_port_config;
 struct sim18_data_s gps_mydata;
@@ -149,9 +149,7 @@ void sim18_Stop(void){
 	if(sim18_port_config.protocol == sim18_NMEA){
 		 nmea_stop();
 	}else{ 
-		sirf_to_nmea(sim18_115200);
-		sim18_switch_to_nmea();	
-		nmea_stop();
+		sirf_stop();
 	}
 }
 

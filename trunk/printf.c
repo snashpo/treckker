@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-char printf_buffer[PRINTF_BUFFER_SIZE];
+unsigned char printf_buffer[PRINTF_BUFFER_SIZE];
 static unsigned short printf_buffer_index = 0;
 static unsigned char (*printf_flush_callback) (unsigned char *buffer, 
 		unsigned char num) = NULL;

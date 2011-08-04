@@ -47,38 +47,38 @@ uint32_t htonl(uint32_t l)
 	  ((l & 0x000000ff) << 24));
 }
 
-void push_long(uint8_t *buf, uint8_t *index, uint32_t data)
+void push_long(uint8_t *buf, uint8_t *indice, uint32_t data)
 {
   uint32_t l;
 
   l = htonl(data);
-  memcpy(buf + *index, &l, sizeof(uint32_t));
-  *index+= sizeof(uint32_t);
+  memcpy(buf + *indice, &l, sizeof(uint32_t));
+  *indice+= sizeof(uint32_t);
 }
 
-void push_short(uint8_t *buf, uint8_t *index, uint16_t data)
+void push_short(uint8_t *buf, uint8_t *indice, uint16_t data)
 {
   uint16_t s;
 
   s = htons(data);
-  memcpy(buf + *index, &s, sizeof(uint16_t));
-  *index+= sizeof(uint16_t);
+  memcpy(buf + *indice, &s, sizeof(uint16_t));
+  *indice+= sizeof(uint16_t);
 }
 
-void pop_long(uint8_t *buf, uint8_t *index, uint32_t *data)
+void pop_long(uint8_t *buf, uint8_t *indice, uint32_t *data)
 {
   uint32_t l;
 
-  memcpy(&l, buf + *index, sizeof(uint32_t));
+  memcpy(&l, buf + *indice, sizeof(uint32_t));
   *data = ntohl(l);
-  *index+= sizeof(uint32_t);
+  *indice+= sizeof(uint32_t);
 }
 
-void pop_short(uint8_t *buf, uint8_t *index, uint16_t *data)
+void pop_short(uint8_t *buf, uint8_t *indice, uint16_t *data)
 {
   uint16_t s;
 
-  memcpy(&s, buf + *index, sizeof(uint16_t));
+  memcpy(&s, buf + *indice, sizeof(uint16_t));
   *data = ntohs(s);
-  *index+= sizeof(uint16_t);
+  *indice+= sizeof(uint16_t);
 }

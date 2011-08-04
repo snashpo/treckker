@@ -3,7 +3,7 @@
 
 enum SystemFrequency_Mode_n {
 	LOW,
-	HIGH,
+	HIGH
 };
 
 /* System Clock Frequency (Core Clock) */

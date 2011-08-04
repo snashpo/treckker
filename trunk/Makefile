@@ -7,9 +7,12 @@ AS      = arm-elf-as
 CP      = arm-elf-objcopy
 OD		  = arm-elf-objdump
 
-CFLAGS  =  -lm -I./ -I./include -c -fno-common  -fomit-frame-pointer -g -DDEBUG#-Os 
-CFLAGS  += -mcpu=cortex-m3 -mthumb -mthumb-interwork
-CFLAGS  += -DUSE_STDPERIPH_DRIVER -DPRINTF_BUFFER_SIZE=128 -Wunused
+CFLAGS  = -c -g  -I./ -I./include -Os -std=gnu99 
+CFLAGS  += -mcpu=cortex-m3 -mthumb -mthumb-interwork -fno-common -fomit-frame-pointer 
+CFLAGS  += -Wunused -pedantic -Wimplicit -Wpointer-arith 
+CFLAGS  += -Wredundant-decls -Wcast-qual -Wcast-align -Wshadow  
+CFLAGS  += -lm
+CFLAGS  += -DDEBUG -DUSE_STDPERIPH_DRIVER -DPRINTF_BUFFER_SIZE=128 -DSTM32_SD_USE_DMA
 AFLAGS  = -ahls -mapcs-32 -o crt.o
 LFLAGS  = -Tstm32_flash.ld -nostartfiles
 CPFLAGS = -Obinary
@@ -52,9 +55,11 @@ COBJECTS = printf.o \
 			sirf.o \
 			tools.o \
 			MS5607.o \
-			sdcard.o \
+			ccsbcs.o \
+			fattime.o \
 			ff.o \
-			diskio.o \
+			rtc.o \
+			sd_spi_stm32.o \
 			sht1x.o
 
 			#--------------------------------------------------

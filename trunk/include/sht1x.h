@@ -5,9 +5,7 @@
 // SHT1x.h : header file
 // 
 //
-// CyrLink declarations for interfacing Sensirion SHT1x device
 ///////////////////////////////////////////////////////////////////////////////
-// Copyright (C) 2006  CyrLink S.A.S. http://www.cyrlink.com
 // All rights reserved - not to be sold.
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -88,9 +86,9 @@ struct sht1x_s{
 
 enum sht1x_data_n {
 	TEMPERATURE = 0,
-	HUMIDITY = 1,
+	HUMIDITY = 1
 #ifdef DEW_POINT
-	DEWPOINT = 2,
+	, DEWPOINT = 2
 #endif
 };
 
@@ -122,7 +120,7 @@ static inline void sht1x_release(void){
 	SHT1x_SET_DATA_AS_INPUT();
 	SHT1x_CLK_FALLING_EDGE();
 }
-
+#include "hw_config.h"
 //----------------------------------------------------------------------------------
 //		static inline void send_start(void)
 //----------------------------------------------------------------------------------
