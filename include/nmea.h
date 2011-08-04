@@ -8,11 +8,6 @@
 // };
 //-------------------------------------------------- 
 
-extern struct sim18_data_s gps_mydata;
-extern struct sim18_serial_settings_s sim18_port_config;
-extern uint8_t sim18_in_buf[];
-extern uint8_t sim18_out_buf[];
-
 
 /********** NMEA_PSRF103	************/
 enum NMEA_PSRF103_MESSAGE_CTRL{
@@ -28,11 +23,11 @@ enum NMEA_PSRF103_MODE{
 	NMEA_PSRF103_MODE_SET_RATE = 0,
 	NMEA_PSRF103_MODE_ONE_TIME,
 	NMEA_PSRF103_MODE_ABP_ON,
-	NMEA_PSRF103_MODE_ABP_OFF,
+	NMEA_PSRF103_MODE_ABP_OFF
 };
 enum NMEA_PSRF103_RATE{
 	NMEA_PSRF103_RATE_OFF = 0,
-	NMEA_PSRF103_RATE_ONCE_PER_CYCLE,
+	NMEA_PSRF103_RATE_ONCE_PER_CYCLE
 };
 struct NMEA_PSRF103{
 	enum NMEA_PSRF103_MESSAGE_CTRL message_ctrl;
@@ -42,6 +37,8 @@ struct NMEA_PSRF103{
 
 /********** high level functions	************/
 void nmea_init(void);
+void nmea_warn_restart(void);
+void nmea_stop(void);
 int nmea_validate_sentence(uint16_t length);
 uint32_t nmea_add_crc(char * data, uint32_t length);
 int nmea_parse_data(void);

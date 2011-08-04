@@ -33,7 +33,9 @@ extern unsigned long _ebss;
  */
 extern void _estack;  
 
-void Reset_Handler(void) __attribute__((__interrupt__));
+/*--------------------------------------------------
+* void Reset_Handler(void) __attribute__((__interrupt__));
+*--------------------------------------------------*/
 extern int main(void);
 void __Init_Data(void);
 
@@ -48,7 +50,6 @@ void WEAK HardFault_Handler(void);
 void WEAK MemManage_Handler(void);
 void WEAK BusFault_Handler(void);
 void WEAK UsageFault_Handler(void);
-void WEAK MemManage_Handler(void);
 void WEAK SVC_Handler(void);
 void WEAK DebugMon_Handler(void);
 void WEAK PendSV_Handler(void);

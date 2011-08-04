@@ -46,16 +46,15 @@
 #define SIRF_MSG_41_HODP_INDEX								90
 #define SIRF_MSG_41_ADD_MODE_INFO_INDEX					91
 
-extern struct sim18_serial_settings_s sim18_port_config;
-extern struct sim18_data_s gps_mydata;
-extern uint8_t sim18_in_buf[];
-extern uint8_t sim18_out_buf[];
+
+
 
 
 int sirf_add_crc(uint8_t * data, uint32_t length);
 int sirf_validate_sentence(void);
 void sirf_init( void );
-
+void sirf_stop(void);
+void sirf_to_nmea(enum sim18_BAUDRATE baudrate);
 void sirf_get_frame(uint8_t data);
 int sirf_parse_data(void);
 

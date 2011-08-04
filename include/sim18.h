@@ -10,19 +10,21 @@
 #define SIM18_ON_OFF			GPIO_Pin_4
 #define SIM18_WAKEUP			GPIO_Pin_5
 
-
+extern uint8_t sim18_in_buf[];
+extern uint8_t sim18_out_buf[];
 extern uint8_t * nmea_in_buf;
 extern uint8_t * nmea_out_buf;
 extern uint8_t * sirf_in_buf;
 extern uint8_t * sirf_out_buf;
-
+extern struct sim18_serial_settings_s sim18_port_config;
+extern struct sim18_data_s gps_mydata;
 /********** GPS_ALMANAC	************/
 enum GPS_ALMANAC_RESET_MODE{
 	GPS_ALMANAC_RESET_MODE_HOTSTART = 0,
 	GPS_ALMANAC_RESET_MODE_WARMSTART_NOINIT,
 	GPS_ALMANAC_RESET_MODE_WARMSTART_INIT,
 	GPS_ALMANAC_RESET_MODE_COLDSTART,
-	GPS_ALMANAC_RESET_MODE_FACTORYSTART = 8,
+	GPS_ALMANAC_RESET_MODE_FACTORYSTART = 8
 };
 
 enum GPS_DATA{
@@ -83,11 +85,11 @@ struct sim18_data_s{
 
 enum sim18_PROTOCOL{
 	 sim18_SIRF = 0,
-	 sim18_NMEA,
+	 sim18_NMEA
 };
 enum sim18_BAUDRATE{
 	sim18_115200 = 115200,
-	sim18_4800 = 4800,
+	sim18_4800 = 4800
 };
 struct sim18_serial_settings_s{
 	char device[64];
@@ -98,6 +100,7 @@ struct sim18_serial_settings_s{
 
 /********** Low level functions	************/
 int sim18_init(void);
+void sim18_Stop(void);
 void sim18_Configuration(void);
 void sim18_read_data(uint8_t read_value);
 void sim18_write_data(uint32_t length);

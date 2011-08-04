@@ -3,14 +3,21 @@
 
 #include "eeprom.h"
 
-uint16_t VirtAddVarTab[NumbOfVar] = {
-  RF1_OFFSET_L, RF1_OFFSET_H, CALIBRATED
-};
+/*--------------------------------------------------
+* uint16_t VirtAddVarTab[NumbOfVar] = {
+*   RF1_OFFSET_L, RF1_OFFSET_H, CALIBRATED
+* };
+*--------------------------------------------------*/
 
 uint16_t DataVar = 0;
 
 /* Virtual address defined by the user: 0xFFFF value is prohibited */
-extern uint16_t VirtAddVarTab[NumbOfVar];
+/*--------------------------------------------------
+* extern uint16_t VirtAddVarTab[NumbOfVar];
+*--------------------------------------------------*/
+uint16_t VirtAddVarTab[NumbOfVar] = {
+  RF1_OFFSET_L, RF1_OFFSET_H, CALIBRATED
+};
 
 static FLASH_Status EE_Format(void);
 static uint16_t EE_FindValidPage(uint8_t Operation);

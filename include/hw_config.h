@@ -41,7 +41,7 @@
 #define PSU_NO_VOLTAGE           0
 enum clock_speed_n{
 	SLOW = 0, 
-	FAST, 
+	FAST 
 };
 
 extern int32_t sys_clock_freq_stepping;
@@ -60,20 +60,19 @@ void TIM_Configuration(void);
 void ADC_Configuration(void);
 void I2C_Configuration(void);
 void SPI2_Configuration(void);
-
-//--------------------------------------------------
-// void SPI2_Unconfiguration(void);
-// void EXTI_Configuration(void);
-// void DIO_Configuration(bool in_out);
-// void EXTI13_Configuration(FunctionalState State);
-// void EXTI14_Configuration(FunctionalState State);
-//-------------------------------------------------- 
+/*
+void SPI2_Unconfiguration(void);
+void EXTI_Configuration(void);
+void DIO_Configuration(bool in_out);
+void EXTI13_Configuration(FunctionalState State);
+void EXTI14_Configuration(FunctionalState State);
+*/
 void Interrupts_Configuration(void);
 void mdelay(uint16_t ms);
 void udelay(uint16_t us);
 void ndelay(uint16_t ns);
 void stepping_switch(bool fast_slow);
 void cpu_reset(void);
-
+uint16_t vbat_value(void);
 #endif  /*__HW_CONFIG_H*/
 

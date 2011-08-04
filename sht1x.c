@@ -5,6 +5,7 @@
 
 #include "sht1x.h"
 #include "timer.h"
+#include "hw_config.h"
 
 #ifdef DEBUG
 #define DEBUGF(x, args...) printf(x, ##args)
@@ -198,11 +199,11 @@ void SHT1x_Config(void){
 	mdelay(SHT1x_START_TIME_MS);
 }
 
-uint16_t SHT1x_get_data(enum sht1x_data_n data){
-	uint16_t * tmp;
+int16_t SHT1x_get_data(enum sht1x_data_n data){
+	int16_t * tmp;
 	while (mydata.lock);
-	tmp = &(mydata.temperature);
-	return *(tmp + data);
+	tmp = (int16_t*)&(mydata.temperature);
+	return (int16_t)*(tmp + data);
 }
 
 

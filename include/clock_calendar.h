@@ -67,19 +67,19 @@
 
 enum dateTime_settings_n{
 	RTC_MODE_SETTINGS_CURRENT,
-	RTC_MODE_SETTINGS_ALARM,
+	RTC_MODE_SETTINGS_ALARM
 };
 
 enum alarm_state_n {
 	RTC_ALARM_WAITING,
 	RTC_ALARM_STARTED,
-	RTC_ALARM_PENDING,
+	RTC_ALARM_PENDING
 };
 
 enum alarm_mode_n{
 	ALARM_MODE_DISABLE,
 	ALARM_MODE_ONCE,
-	ALARM_MODE_DAYLY,
+	ALARM_MODE_DAYLY
 	//--------------------------------------------------
 	// ALARM_MODE_WEEKLY,
 	// ALARM_MODE_MONTHLY,
@@ -181,14 +181,8 @@ void DateUpdate(void);
 void TimeUpdate(void);
 uint16_t WeekDay(uint16_t,uint8_t,uint8_t);
 void CalculateTime(void);
-void RTC_NVIC_Configuration(void);
-void rtc_Init(void);
-void GPIO_Configuration(void);
-void DelayLowPower(__IO uint32_t nCount);
-void SysTickConfig(void);
 void CheckForDaysElapsed(void);
 void ManualClockCalibration(void);
-void ReturnFromStopMode(void);
 uint32_t get_sec_counter(void);
 void set_sec_counter(uint32_t now);
 void inc_sec_counter(void);

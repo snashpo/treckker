@@ -91,7 +91,7 @@ int sirf_add_crc(uint8_t * data, uint32_t length){
 }
 
 
-int sirf_to_nmea(enum sim18_BAUDRATE baudrate){
+void sirf_to_nmea(enum sim18_BAUDRATE baudrate){
 
 	static uint8_t msg[] = {
 		0xa0, 0xa2, 0x00, 0x18,
@@ -118,8 +118,6 @@ int sirf_to_nmea(enum sim18_BAUDRATE baudrate){
 	memcpy(msg, sirf_out_buf, length);
 
 	sim18_write_data(length);
-		
-	return 0;
 }
 
 int sirf_set_ptf_mode(void){
@@ -189,7 +187,7 @@ int sirf_set_msg_41_2s(void){
 	return 0;
 }
 
-int sirf_stop(void){
+void sirf_stop(void){
 	static uint8_t msg[] = {
 		0xA0, 0xA2, 0x00, 0x00,
 		0xCD, 
@@ -204,18 +202,16 @@ int sirf_stop(void){
 	memcpy(msg, sirf_out_buf, length);
 
 	sim18_write_data(length);
-
-	return 0;
 }
 
 
 
 
-static int translate_sirf_coordonnate(uint8_t * data, uint8_t *index
+static int translate_sirf_coordonnate(uint8_t * data, uint8_t *indice
 		, struct coordonate_s * point){
  	int degree;
  
- 	pop_int32(data, &index, &degree);
+ 	pop_int32(data, &indice, &degree);
  
  	point->degree = degree / 10000000;
  	point->minute = (degree - (point->degree *  10000000)) / 60;
@@ -243,43 +239,43 @@ static int translate_sirf_coordonnate(uint8_t * data, uint8_t *index
 *--------------------------------------------------*/
 int sirf_parse_message_id_41(uint8_t *data){
  	
-	int index;
+	int indice;
  	gps_mydata.lock = 1;
  
-	index = SIRF_MSG_41_NAV_VALID_INDEX;
- 	pop_int16(data, &index, &gps_mydata.data_valide);
-	pop_int16(data, &index, &gps_mydata.gps_mode);
+	indice = SIRF_MSG_41_NAV_VALID_INDEX;
+ 	pop_int16(data, &indice, &gps_mydata.data_valide);
+	pop_int16(data, &indice, &gps_mydata.gps_mode);
 
-	index = SIRF_MSG_41_EXT_WEEK_NUM_INDEX;
-	pop_int16(data, &index, &gps_mydata.week_no);
- 	pop_int16(data, &index, &gps_mydata.time_of_week);
+	indice = SIRF_MSG_41_EXT_WEEK_NUM_INDEX;
+	pop_int16(data, &indice, &gps_mydata.week_no);
+ 	pop_int16(data, &indice, &gps_mydata.time_of_week);
 
-	index = SIRF_MSG_41_LAT_INDEX;
- 	translate_sirf_coordonnate(data, &index, &gps_mydata.latitude);
- 	translate_sirf_coordonnate(data, &index, &gps_mydata.longitude);
+	indice = SIRF_MSG_41_LAT_INDEX;
+ 	translate_sirf_coordonnate(data, &indice, &gps_mydata.latitude);
+ 	translate_sirf_coordonnate(data, &indice, &gps_mydata.longitude);
 
-	index = SIRF_MSG_41_ALT_MSL_INDEX;
- 	pop_int32(data, &index, &gps_mydata.altitude);
+	indice = SIRF_MSG_41_ALT_MSL_INDEX;
+ 	pop_int32(data, &indice, &gps_mydata.altitude);
 
- 	index = SIRF_MSG_41_SPEED_OVER_GOURND_INDEX;
- 	pop_int16(data, &index, &gps_mydata.speed_horizontal);
+ 	indice = SIRF_MSG_41_SPEED_OVER_GOURND_INDEX;
+ 	pop_int16(data, &indice, &gps_mydata.speed_horizontal);
 
-	index = SIRF_MSG_41_CLIMB_RATE_INDEX;
- 	pop_int16(data, &index, &gps_mydata.speed_vertical);
+	indice = SIRF_MSG_41_CLIMB_RATE_INDEX;
+ 	pop_int16(data, &indice, &gps_mydata.speed_vertical);
 
-	index = SIRF_MSG_41_MONTH_INDEX;
- 	pop_int16(data, &index, &gps_mydata.date_time.year);
- 	gps_mydata.date_time.month	= *(data + index++);
- 	gps_mydata.date_time.day	= *(data + index++);
- 	gps_mydata.date_time.hour	= *(data + index++);
- 	gps_mydata.date_time.minute = *(data + index++);
- 	pop_int16(data, &index, &gps_mydata.date_time.seconde);
+	indice = SIRF_MSG_41_MONTH_INDEX;
+ 	pop_int16(data, &indice, &gps_mydata.date_time.year);
+ 	gps_mydata.date_time.month	= *(data + indice++);
+ 	gps_mydata.date_time.day	= *(data + indice++);
+ 	gps_mydata.date_time.hour	= *(data + indice++);
+ 	gps_mydata.date_time.minute = *(data + indice++);
+ 	pop_int16(data, &indice, &gps_mydata.date_time.seconde);
 
-	index = SIRF_MSG_41_CLOCK_DRIFT_INDEX;
-	gps_mydata.clk_drift	= *(data + index++);
+	indice = SIRF_MSG_41_CLOCK_DRIFT_INDEX;
+	gps_mydata.clk_drift	= *(data + indice++);
 
-	index = SIRF_MSG_41_NB_SV_IN_FIX_INDEX;
- 	gps_mydata.sat_number	= *(data + index++);
+	indice = SIRF_MSG_41_NB_SV_IN_FIX_INDEX;
+ 	gps_mydata.sat_number	= *(data + indice++);
 	
 // 	gps_mydata.GPS_ALMANAC_RESET_MODE	= ;
  	gps_mydata.lock = 0;

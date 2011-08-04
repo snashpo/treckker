@@ -16,6 +16,5 @@ void USB_LP_CAN1_RX0_IRQHandler(void);
 void USART1_IRQHandler(void);
 void DMA1_Channel1_IRQHandler(void);
 void SPI2_IRQHandler(void);
-uint32_t tick_1khz(void);
 
 #endif /* __STM32F10x_IT_H */

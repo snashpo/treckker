@@ -13,6 +13,7 @@
 #include "hw_config.h"
 #include "clock_calendar.h"
 #include "button.h"
+#include "sht1x.h"
 
 #include "version.h"
 

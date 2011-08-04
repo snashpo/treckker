@@ -1,6 +1,7 @@
 #include "stm32f10x.h"
 
 #include "buzzer.h"
+#include "timer.h"
 
 
 static uint32_t buzzer_start = 0;

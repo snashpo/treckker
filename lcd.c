@@ -2,6 +2,7 @@
 #include "stm32f10x_it.h"
 
 #include "lcd.h"
+#include "hw_config.h"
 #include "logo_acom.h"
 #include "font5x8.h"
 #include "crc.h"
