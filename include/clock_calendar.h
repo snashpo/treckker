@@ -161,7 +161,7 @@ void rtc_Init(void);
 void RTC_Configuration(void);
 
 uint32_t get_sec_counter(void);
-void set_sec_counter(uint32_t now);
+uint32_t set_sec_counter(uint32_t now);
 uint32_t inc_sec_counter(void);
 
 void set_time(rtc_t *rtc);
@@ -172,13 +172,13 @@ void get_alarm(rtc_t * rtc);
 void alarm_Mgmt(void);
 void rtc_print(void);
 
+void DateUpdate(void);
+void TimeUpdate(void);
+uint16_t WeekDay(uint16_t,uint8_t,uint8_t);
 //--------------------------------------------------
-// void DateUpdate(void);
-// void TimeUpdate(void);
-// uint16_t WeekDay(uint16_t,uint8_t,uint8_t);
 // void CheckForDaysElapsed(void);
 // void ManualClockCalibration(void);
-// //-------------------------------------------------- 
+//-------------------------------------------------- 
 
 #endif /* __CLOCK_CALENDAR_H */
 
