@@ -237,11 +237,11 @@ void RTC_IRQHandler(void)
 {
 	uint8_t Month,Day;
 	uint16_t Year;
-	static uint32_t sec_counter = 0;
+	static uint32_t sec_counter; 
 
-	Month = READ_BKP_CLOCK_MONTH();
-	Day = READ_BKP_CLOCK_DAY();
 	Year = READ_BKP_CLOCK_YEAR();
+	Month = READ_BKP_CLOCK_MONTH();
+	Day = READ_BKP_CLOCK_MDAY();	
 	NVIC_ClearPendingIRQ(RTC_IRQn);
 	RTC_ClearITPendingBit(RTC_IT_SEC);
 
@@ -249,8 +249,7 @@ void RTC_IRQHandler(void)
 	* sec_counter = get_sec_counter() + RTC_PERIOD_VALUE;
 	* set_sec_counter(sec_counter);
 	*--------------------------------------------------*/
-	inc_sec_counter();
-	sec_counter = get_sec_counter();
+	sec_counter = inc_sec_counter();
 	/*--------------------------------------------------
 	* RTC_SetCounter(0);
 	* RTC_SetAlarm(1);

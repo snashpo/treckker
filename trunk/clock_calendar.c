@@ -39,7 +39,31 @@
 #endif
 
 /* Private variables--------------------------------------------------------- */
+enum Months_n{
+	JANURAY = 1,
+	FEBRUARY,
+	MARCH,
+	APRIL,
+	MAY,
+	JUNE,
+	JULY,
+	AUGUST,
+	SEPTEMBER,
+	OCTOBER,
+	NOVEMBER,
+	DECEMBER
+};
 char * MonthsNames[]={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug", "Sep","Oct","Nov","Dec"};
+enum Days_n{
+	SUNDAY,
+	MONDAY,
+	TUESDAY,
+	WENERSDAY,
+	THURSDAY,
+	FRIDAY,
+	SATURDAY
+};
+
 char * DaysNames[]={"Sun", "Mon", "Tue", "Wen", "Thu", "Fri", "Sat"};
 
 const uint8_t CalibrationPpm[]={0,1,2,3,4,5,6,7,8,9,10,10,11,12,13,14,15,16,17,
@@ -95,8 +119,9 @@ uint32_t get_sec_counter(void){
 	return sec_counter;
 }
 
-void set_sec_counter(uint32_t now){
+uint32_t set_sec_counter(uint32_t now){
 	sec_counter = now;
+	return sec_counter;
 }
 
 uint32_t inc_sec_counter(void){
