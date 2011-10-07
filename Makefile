@@ -1,20 +1,40 @@
-NAME   = stm103_stk_blink_rom
+NAME    	=stm32_trecker
 
-CC      = arm-elf-gcc
-LD      = arm-elf-ld -v
-AR      = arm-elf-ar
-AS      = arm-elf-as
-CP      = arm-elf-objcopy
-OD		  = arm-elf-objdump
 
-CFLAGS  = -c -g  -I./ -I./include -Os -std=gnu99 
-CFLAGS  += -mcpu=cortex-m3 -mthumb -mthumb-interwork -fno-common -fomit-frame-pointer 
+#--------------------------------------------------
+# DIR		=/usr/local/stm32
+# BIN_DIR	=$(DIR)/bin
+# INC_DIR	=$(DIR)/include
+# BASENAME =arm-none-eabi
+#-------------------------------------------------- 
+
+####################################################################
+#				OLD CONFIGURATION
+#
+DIR		 =/opt/arm-cortex
+BIN_DIR	 =$(DIR)/bin
+INC_DIR	 =$(DIR)/include
+BASENAME =arm-elf
+####################################################################
+
+
+
+CC      =$(BIN_DIR)/$(BASENAME)-gcc
+LD      =$(BIN_DIR)/$(BASENAME)-gcc
+#LD      =$(BIN_DIR)/$(BASENAME)-ld -v 
+AR      =$(BIN_DIR)/$(BASENAME)-ar
+AS      =$(BIN_DIR)/$(BASENAME)-as
+CP      =$(BIN_DIR)/$(BASENAME)-objcopy
+OD		  =$(BIN_DIR)/$(BASENAME)-objdump
+
+CFLAGS  = -c -g -I./ -I./include -I$(INC_DIR) -Os -std=gnu99 
+CFLAGS  += -mcpu=cortex-m3 -mthumb -fno-common -mthumb-interwork
 CFLAGS  += -Wunused -pedantic -Wimplicit -Wpointer-arith 
 CFLAGS  += -Wredundant-decls -Wcast-qual -Wcast-align -Wshadow  
-CFLAGS  += -lm
 CFLAGS  += -DDEBUG -DUSE_STDPERIPH_DRIVER -DPRINTF_BUFFER_SIZE=128 -DSTM32_SD_USE_DMA
-AFLAGS  = -ahls -mapcs-32 -o crt.o
-LFLAGS  = -Tstm32_flash.ld -nostartfiles
+
+AFLAGS  = -ahls -mapcs-32 -o crt.o -mthumb
+LFLAGS  = -Tstm32_flash.ld -nostartfiles 
 CPFLAGS = -Obinary
 ODFLAGS = -S
 ARLAGS  = -rcs 
@@ -60,14 +80,10 @@ COBJECTS = printf.o \
 			ff.o \
 			rtc.o \
 			sd_spi_stm32.o \
-			sht1x.o
-
-			#--------------------------------------------------
-			# 			# LSM303.o \
-			# vector.o \
-			#-------------------------------------------------- 
+			sht1x.o \
+			LSM303.o \
+			vector.o 
 					
-
 LSOURCES        = $(patsubst %.o,%.c,$(LOBJECTS))
 CSOURCES        = $(patsubst %.o,%.c,$(COBJECTS))
 SSOURCES        = $(patsubst %.o,%.s,$(COBJECTS))
@@ -75,43 +91,34 @@ SSOURCES        = $(patsubst %.o,%.s,$(COBJECTS))
 .SUFFIXES: .o
 
 .c.o:
-	@ echo ".compiling"
+	@ echo ".compiling $<"
 	$(CC) $(CFLAGS) $<
 
 .s.o:
-	@ echo ".compiling"
+	@ echo ".compiling  $<"
 	$(CC) $(CFLAGS) $<
 
-all: stm32_rtc
-
+all: $(NAME)
 
 clean:
 	-rm -f *~ main.dist main.list main.dis main.out main.hex main.map main.bin makefile.dep *.o .*.sw*
 
-#--------------------------------------------------
-# stm32.a: $(LOBJECTS)
-# 	$(AR) $(ARLAGS) stm32.a $(LOBJECTS)
-#-------------------------------------------------- 
+stm32.a: $(LOBJECTS)
+	$(AR) $(ARLAGS) stm32.a $(LOBJECTS)
 
-stm32_rtc: main.out
+$(NAME): main.out
 	@ echo "...copying"
 	$(CP) $(CPFLAGS) main.out main.bin
+	$(CP) $(CPFLAGS) main.bin $(NAME).bin
 	$(OD) $(ODFLAGS) main.out > main.list
 	$(OD) -d main.out > main.dis
 	#--------------------------------------------------
 	# ./Flash.sh
 	#-------------------------------------------------- 
 
-#--------------------------------------------------
-# main.out: $(COBJECTS) stm32_flash.ld stm32.a
-#-------------------------------------------------- 
-main.out: $(COBJECTS) $(LOBJECTS) stm32_flash.ld 
+main.out: $(COBJECTS) stm32_flash.ld stm32.a
 	@ echo "..linking"
-	$(LD) $(LFLAGS) -M -o main.out $(COBJECTS) $(LOBJECTS) > main.map
-	#--------------------------------------------------
-	# $(LD) $(LFLAGS) -M -o main.out $(COBJECTS) stm32.a > main.map
-	#-------------------------------------------------- 
-
+	$(LD) $(LFLAGS) -o main.out $(COBJECTS) stm32.a -lm > main.map
 
 -include makefile.dep
 
@@ -121,5 +128,5 @@ makefile.dep: $(CSOURCES)
 	rm -f makefile.dep
 	for csrc in $(CSOURCES) ;\
 	do \
-	$(CC) $(CFLAGS) -MM $$csrc >>makefile.dep ;\
+		$(CC) $(CFLAGS) -MM $$csrc >>makefile.dep ;\
 	done
