@@ -16,7 +16,7 @@
    limitations under the License.
 
 -->
-<Mcu xmlns="http://mcd.rou.st.com/modules.php?name=mcu" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" FamilyName="STM32" IOs="Input_Floating,Input_Pull-down,Input_Pull-up,Output_Push-Pull,Output_Open-drain,Analog" MangustaType="false" PackageName="LQFP64" RefName="STM32F103R(8-B)Tx" Reserved1="" VersionNumber="V1.1" xsi:schemaLocation="http://mcd.rou.st.com/modules.php?name=mcu X:/mcd_appli_builder/io_configurator/IoConfiguratorProject/db/mcus.xsd">
+<Mcu xmlns="http://mcd.rou.st.com/modules.php?name=mcu" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" FamilyName="STM32" IOs="Input_Floating,Input_Pull-down,Input_Pull-up,Output_Push-Pull,Output_Open-drain,Analog" MangustaType="false" PackageName="LQFP64" RefName="STM32F103R(8-B)Tx" Reserved1="false" VersionNumber="V1.1" xsi:schemaLocation="http://mcd.rou.st.com/modules.php?name=mcu X:/mcd_appli_builder/io_configurator/IoConfiguratorProject/db/mcus.xsd">
 	<Peripheral Name="SPI1">
 		<Mode Mapped="false" Name="Mode" SubModeLogicalOperator="XOR">
 			<SubMode Available="false" Mapped="false" Name="Full-Duplex-Master">
